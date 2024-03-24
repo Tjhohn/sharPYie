@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34031.279
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharPYieLib", "sharPYieLib\sharPYieLib.csproj", "{523A9086-18C6-49F8-BF4D-A265EFC3D043}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharPYieTest", "sharPYieTest\sharPYieTest.csproj", "{CBFF39D1-DA8F-4284-824E-6150B66096A1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{523A9086-18C6-49F8-BF4D-A265EFC3D043}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{523A9086-18C6-49F8-BF4D-A265EFC3D043}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{523A9086-18C6-49F8-BF4D-A265EFC3D043}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{523A9086-18C6-49F8-BF4D-A265EFC3D043}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBFF39D1-DA8F-4284-824E-6150B66096A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBFF39D1-DA8F-4284-824E-6150B66096A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBFF39D1-DA8F-4284-824E-6150B66096A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBFF39D1-DA8F-4284-824E-6150B66096A1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DDAB2165-E38F-4A69-9A51-1113D43A8B96}
+	EndGlobalSection
+EndGlobal
