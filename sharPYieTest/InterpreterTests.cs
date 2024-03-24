@@ -37,8 +37,10 @@ namespace sharPYieTest
             }
         }
 
-        [TestCase("testinputs/simpleAssignment.py", 5)] // Assume the file contains "a = 2\nb = 3\nc = a + b"
-        public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, int expectedResult)
+        [TestCase("testinputs/stringliteraltoConsole.py", 0, "this is a straight up string")] // print string
+        [TestCase("testinputs/ifAndPrint.py", 6, "x is 1")] // file has an if and end result x should be 2
+        [TestCase("testinputs/simpleAssignment.py", 5, "")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
+        public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, int expectedResult, string expectedString)
         {
 
             string projectDirectory = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", ".."));
@@ -57,12 +59,30 @@ namespace sharPYieTest
             var ast = parser.Parse();
             var interpreter = new Interpreter();
 
-            interpreter.Interpret(ast);
 
-            // Get the value of the last assignment and verify against expected result
-            var lastAssignment = (AssignmentNode)ast[ast.Count - 1];
-            int result = interpreter.GetVariableValue(lastAssignment.VariableName);
-            Assert.AreEqual(expectedResult, result);
+            using (StringWriter sw = new StringWriter())
+            {
+                Console.SetOut(sw);
+
+                interpreter.Interpret(ast);
+
+                // Get the printed output
+                string printedOutput = sw.ToString().Trim();
+
+                // Verify the printed output matches the expected result
+                Assert.AreEqual(expectedString, printedOutput);
+            }
+
+            // Get the value of the last assignment and verify against expected result if exists
+            var assignmentNodeExists = ast.Any(node => node is AssignmentNode);
+
+            if (assignmentNodeExists)
+            {
+                // Get the value of the last assignment and verify against expected result
+                var lastAssignment = (AssignmentNode)ast.Last(node => node is AssignmentNode);
+                int result = (int)interpreter.GetVariableValue(lastAssignment.VariableName);
+                Assert.AreEqual(expectedResult, result);
+            }
         }
     }
 }

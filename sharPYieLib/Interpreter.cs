@@ -5,11 +5,11 @@ namespace sharPYieLib
 {
     public class Interpreter
     {
-        private readonly Dictionary<string, int> environment;
+        private readonly Dictionary<string, object> environment;
 
         public Interpreter()
         {
-            environment = new Dictionary<string, int>();
+            environment = new Dictionary<string, object>();
         }
 
         public void Interpret(List<AstNode> ast)
@@ -20,9 +20,9 @@ namespace sharPYieLib
             }
         }
 
-        public int GetVariableValue(string variableName)
+        public object GetVariableValue(string variableName)
         {
-            if (environment.TryGetValue(variableName, out int value))
+            if (environment.TryGetValue(variableName, out object value))
             {
                 return value;
             }
@@ -32,31 +32,63 @@ namespace sharPYieLib
             }
         }
 
-        private int Walk(AstNode node)
+        private void Walk(AstNode node)
         {
+            if (node is AssignmentNode assignmentNode)
+            {
+                // Evaluate the value assigned to the variable
+                object value = EvaluateExpression(assignmentNode.Value);
+                // Update the environment with the variable assignment
+                environment[assignmentNode.VariableName] = value;
+            }
+            else if (node is IfStatementNode ifStatementNode)
+            {
+                // Evaluate the condition
+                int conditionValue = (int)EvaluateExpression(ifStatementNode.Condition);
+                if (conditionValue == 1)
+                {
+                    // Execute the body of the if statement
+                    foreach (var statement in ifStatementNode.Body)
+                    {
+                        Walk(statement);
+                    }
+                }
+            }
+            else if (node is PrintStatementNode printStatementNode)
+            {
+                // Evaluate the expression to print
+                object expressionValue = EvaluateExpression(printStatementNode.Expression);
+                // Print the value
+                Console.WriteLine(expressionValue);
+            }
+            else
+            {
+                throw new ArgumentException($"Unsupported node type: {node.GetType().Name}");
+            }
+        }
+
+        private object EvaluateExpression(AstNode node)
+        {
+            // Handle evaluation of expressions and return their values
             if (node is IntLiteralNode intLiteralNode)
             {
                 return intLiteralNode.Value;
             }
+            else if (node is StringLiteralNode stringLiteralNode)
+            {
+
+                return stringLiteralNode.Value;
+            }
             else if (node is BinaryOperationNode binaryOperationNode)
             {
-                int leftValue = Walk(binaryOperationNode.Left);
-                int rightValue = Walk(binaryOperationNode.Right);
+                int leftValue = (int)EvaluateExpression(binaryOperationNode.Left);
+                int rightValue = (int)EvaluateExpression(binaryOperationNode.Right);
                 return EvaluateBinaryOperation(leftValue, binaryOperationNode.Operator, rightValue);
-            }
-            else if (node is AssignmentNode assignmentNode)
-            {
-                // Evaluate the value assigned to the variable
-                int value = Walk(assignmentNode.Value);
-                // Update the environment with the variable assignment
-                environment[assignmentNode.VariableName] = value;
-                // Return the assigned value
-                return value;
             }
             else if (node is VariableNode variableNode)
             {
                 // Look up the value of the variable in the environment
-                if (environment.TryGetValue(variableNode.Name, out int value))
+                if (environment.TryGetValue(variableNode.Name, out object value))
                 {
                     return value;
                 }
@@ -85,8 +117,10 @@ namespace sharPYieLib
                     if (right == 0)
                         throw new DivideByZeroException();
                     return left / right;
+                case "==":
+                    return left == right ? 1 : 0;
                 default:
-                    throw new ArgumentException("Unsupported operator");
+                    throw new ArgumentException($"Unsupported operator: {op}");
             }
         }
     }

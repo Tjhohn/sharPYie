@@ -41,23 +41,63 @@ namespace sharPYieLib
                 }
                 else if (char.IsLetter(input[position]))
                 {
-                    // Tokenize identifiers
+                    // Tokenize identifiers or keywords
                     string identifier = "";
                     while (position < input.Length && (char.IsLetter(input[position]) || char.IsDigit(input[position])))
                     {
                         identifier += input[position];
                         position++;
                     }
-                    tokens.Add(new Token(TokenType.Identifier, identifier));
+                    switch (identifier)
+                    {
+                        case "if":
+                            tokens.Add(new Token(TokenType.If, "if"));
+                            break;
+                        case "print":
+                            tokens.Add(new Token(TokenType.Print, "print"));
+                            break;
+                        default:
+                            tokens.Add(new Token(TokenType.Identifier, identifier));
+                            break;
+                    }
+                }
+                else if (input[position] == '"')
+                {
+                    // Tokenize string literals
+                    string literal = "\"";
+                    position++;
+                    while (position < input.Length && input[position] != '"')
+                    {
+                        literal += input[position];
+                        position++;
+                    }
+                    if (position == input.Length)
+                    {
+                        throw new LexerException("Unterminated string literal.");
+                    }
+                    literal += input[position]; // Add closing quote
+                    tokens.Add(new Token(TokenType.StringLiteral, literal));
+                    position++;
+                }
+                else if (input[position] == '=')
+                {
+                    // Handle '=='
+                    if (position + 1 < input.Length && input[position + 1] == '=')
+                    {
+                        tokens.Add(new Token(TokenType.Equal, "=="));
+                        position += 2;
+                    }
+                    else
+                    {
+                        tokens.Add(new Token(TokenType.Assign, "="));
+                        position++;
+                    }
                 }
                 else
                 {
                     // Handle other token types
                     switch (input[position])
                     {
-                        case '=':
-                            tokens.Add(new Token(TokenType.Assign, "="));
-                            break;
                         case '/':
                             tokens.Add(new Token(TokenType.Divide, "/"));
                             break;
@@ -66,6 +106,15 @@ namespace sharPYieLib
                             break;
                         case '+':
                             tokens.Add(new Token(TokenType.Plus, "+"));
+                            break;
+                        case '(':
+                            tokens.Add(new Token(TokenType.LeftParen, "("));
+                            break;
+                        case ')':
+                            tokens.Add(new Token(TokenType.RightParen, ")"));
+                            break;
+                        case ':':
+                            tokens.Add(new Token(TokenType.Colon, ":"));
                             break;
                         default:
                             throw new LexerException($"Unexpected character '{input[position]}' at position {position}.");
@@ -86,7 +135,14 @@ namespace sharPYieLib
         Integer,
         Minus,
         Plus,
-        Multiply
+        Multiply,
+        If,
+        Print,
+        Equal,
+        Colon,
+        LeftParen,
+        RightParen,
+        StringLiteral
         // Add more token types as needed
     }
 
