@@ -37,10 +37,10 @@ namespace sharPYieTest
             }
         }
 
-        [TestCase("testinputs/stringliteraltoConsole.py", 0, "this is a straight up string")] // print string
+        [TestCase("testinputs/stringliteraltoConsole.py", "this is a straight up string", "this is a straight up string")] // print string
         [TestCase("testinputs/ifAndPrint.py", 6, "x is 1")] // file has an if and end result x should be 2
         [TestCase("testinputs/simpleAssignment.py", 5, "")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
-        public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, int expectedResult, string expectedString)
+        public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
         {
 
             string projectDirectory = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", ".."));
@@ -80,7 +80,7 @@ namespace sharPYieTest
             {
                 // Get the value of the last assignment and verify against expected result
                 var lastAssignment = (AssignmentNode)ast.Last(node => node is AssignmentNode);
-                int result = (int)interpreter.GetVariableValue(lastAssignment.VariableName);
+                var result = interpreter.GetVariableValue(lastAssignment.VariableName);
                 Assert.AreEqual(expectedResult, result);
             }
         }
