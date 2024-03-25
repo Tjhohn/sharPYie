@@ -56,6 +56,9 @@ namespace sharPYieLib
                         case "print":
                             tokens.Add(new Token(TokenType.Print, "print"));
                             break;
+                        case "def":
+                            tokens.Add(new Token(TokenType.Def, "def"));
+                            break;
                         default:
                             tokens.Add(new Token(TokenType.Identifier, identifier));
                             break;
@@ -93,6 +96,76 @@ namespace sharPYieLib
                         position++;
                     }
                 }
+                else if (input[position] == '(')
+                {
+                    // Tokenize left parenthesis
+                    tokens.Add(new Token(TokenType.LeftParen, "("));
+                    position++;
+
+                    // Tokenize function parameters
+                    while (position < input.Length && input[position] != ')')
+                    {
+                        // Skip whitespace
+                        if (char.IsWhiteSpace(input[position]))
+                        {
+                            position++;
+                            continue;
+                        }
+
+                        // Tokenize string literals
+                        if (input[position] == '"')
+                        {
+                            string literal = "\"";
+                            position++;
+                            while (position < input.Length && input[position] != '"')
+                            {
+                                literal += input[position];
+                                position++;
+                            }
+                            if (position == input.Length)
+                            {
+                                throw new LexerException("Unterminated string literal.");
+                            }
+                            literal += input[position]; // Add closing quote
+                            tokens.Add(new Token(TokenType.StringLiteral, literal));
+                            position++;
+                        }
+                        // Tokenize integer literals
+                        else if (char.IsDigit(input[position]))
+                        {
+                            string integer = "";
+                            while (position < input.Length && char.IsDigit(input[position]))
+                            {
+                                integer += input[position];
+                                position++;
+                            }
+                            tokens.Add(new Token(TokenType.Integer, integer));
+                        }
+
+                        // Tokenize parameter identifier
+                        if (char.IsLetterOrDigit(input[position]) || input[position] == '_')
+                        {
+                            string parameter = "";
+                            while (position < input.Length && (char.IsLetterOrDigit(input[position]) || input[position] == '_'))
+                            {
+                                parameter += input[position];
+                                position++;
+                            }
+                            tokens.Add(new Token(TokenType.Identifier, parameter));
+                        }
+
+                        // Tokenize comma separator
+                        if (position < input.Length && input[position] == ',')
+                        {
+                            tokens.Add(new Token(TokenType.Comma, ","));
+                            position++;
+                        }
+                    }
+
+                    // Tokenize right parenthesis
+                    tokens.Add(new Token(TokenType.RightParen, ")"));
+                    position++;
+                }
                 else
                 {
                     // Handle other token types
@@ -107,12 +180,6 @@ namespace sharPYieLib
                         case '+':
                             tokens.Add(new Token(TokenType.Plus, "+"));
                             break;
-                        case '(':
-                            tokens.Add(new Token(TokenType.LeftParen, "("));
-                            break;
-                        case ')':
-                            tokens.Add(new Token(TokenType.RightParen, ")"));
-                            break;
                         case ':':
                             tokens.Add(new Token(TokenType.Colon, ":"));
                             break;
@@ -124,6 +191,16 @@ namespace sharPYieLib
             }
 
             return tokens;
+        }
+
+        public void PrintTokensByType(List<Token> tokens)
+        {
+            Console.WriteLine("Token types:");
+            foreach (Token token in tokens)
+            {
+                Console.Write($"TokenType.{token.Type}, ");
+            }
+            Console.WriteLine();
         }
     }
 
@@ -142,7 +219,9 @@ namespace sharPYieLib
         Colon,
         LeftParen,
         RightParen,
-        StringLiteral
+        StringLiteral,
+        Def,
+        Comma
         // Add more token types as needed
     }
 
