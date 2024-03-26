@@ -59,6 +59,9 @@ namespace sharPYieLib
                         case "def":
                             tokens.Add(new Token(TokenType.Def, "def"));
                             break;
+                        case "return":
+                            tokens.Add(new Token(TokenType.Return, "return"));
+                            break;
                         default:
                             tokens.Add(new Token(TokenType.Identifier, identifier));
                             break;
@@ -221,7 +224,8 @@ namespace sharPYieLib
         RightParen,
         StringLiteral,
         Def,
-        Comma
+        Comma,
+        Return
         // Add more token types as needed
     }
 

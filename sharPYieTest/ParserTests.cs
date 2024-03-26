@@ -32,6 +32,17 @@ namespace sharPYieTest
                 string right = GetValueAsString(binaryOpNode.Right);
                 return $"({left} {binaryOpNode.Operator} {right})";
             }
+            else if (node is FunctionDefinitionNode funcDefNode)
+            {
+                string parameters = string.Join(", ", funcDefNode.Parameters);
+                string body = string.Join("; ", funcDefNode.Body.Select(GetValueAsString));
+                return $"def {funcDefNode.FunctionName}({parameters}): {body}";
+            }
+            else if (node is ReturnStatementNode returnNode)
+            {
+                string returnValue = GetValueAsString(returnNode.ReturnValue);
+                return $"return {returnValue}";
+            }
             else
             {
                 throw new NotSupportedException($"Unsupported node type: {node.GetType().Name}");
@@ -97,13 +108,12 @@ namespace sharPYieTest
             }
         }
 
-        
+        [TestCase("testinputs/firstfunc.py", "a", "1" )]
         [TestCase("testinputs/stringliteraltoConsole.py", "temp", "this is a straight up string", "print", "temp")] // print string
         [TestCase("testinputs/ifAndPrint.py", "a", "56", "b", "9", "d", "4", "x", "1", "if", "(x == 1)", "x", "(((a / d) - b) + x)", "Print", "\"x is 1\"", "if", "(x == 1)", "x", "a", "/", "d", "-", "b", "+", "x")] // file has an if and end result x should be 2
         [TestCase("testinputs/simpleAssignment.py", "a", "2", "b", "3", "c", "(a + b)")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
         public void ParseAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, params string[] expectedNodes)
         {
-
             string projectDirectory = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", ".."));
             string filePath = Path.Combine(projectDirectory, relativePath);
 
@@ -118,6 +128,8 @@ namespace sharPYieTest
             var tokens = lexer.Tokenize();
             var parser = new Parser(tokens);
             var ast = parser.Parse();
+            Console.WriteLine(parser.PrintAST(ast));
+            
 
             int index = 0;
             foreach (var node in ast)
@@ -151,8 +163,15 @@ namespace sharPYieTest
                     Assert.AreEqual(expectedNodes[index++], GetValueAsString(ifStatementNode.Condition)); // Check the condition
                     foreach (var bodyNode in ifStatementNode.Body)
                     {
-                        // You may need to implement additional checks here depending on your requirements
-                        // For example, check for PrintStatementNode within the body
+                        if (bodyNode is PrintStatementNode printNode)
+                        {
+                            Assert.AreEqual("print", expectedNodes[index++]); // Check if it's a print statement
+                            Assert.AreEqual(expectedNodes[index++], GetValueAsString(printNode.Expression)); // Check the expression to be printed
+                        }
+                        else
+                        {
+                            throw new NotSupportedException($"Unsupported node type within if statement body: {bodyNode.GetType().Name}");
+                        }
                     }
                 }
                 else if (node is PrintStatementNode printStatementNode)
@@ -160,12 +179,35 @@ namespace sharPYieTest
                     Assert.AreEqual("print", expectedNodes[index++]); // Check if it's a print statement
                     Assert.AreEqual(expectedNodes[index++], GetValueAsString(printStatementNode.Expression)); // Check the expression to be printed
                 }
+                else if (node is FunctionDefinitionNode funcDefNode)
+                {
+                    Assert.AreEqual("def", expectedNodes[index++]); // Check if it's a function definition
+                    Assert.AreEqual(expectedNodes[index++], funcDefNode.FunctionName); // Check the function name
+                    CollectionAssert.AreEqual(expectedNodes.Skip(index).Take(funcDefNode.Parameters.Count).ToArray(), funcDefNode.Parameters); // Check the function parameters
+                    index += funcDefNode.Parameters.Count;
+                    foreach (var bodyNode in funcDefNode.Body)
+                    {
+                        if (bodyNode is ReturnStatementNode returnNode)
+                        {
+                            Assert.AreEqual("return", expectedNodes[index++]); // Check if it's a return statement
+                            Assert.AreEqual(expectedNodes[index++], GetValueAsString(returnNode.ReturnValue)); // Check the return value
+                        }
+                        else if (bodyNode is PrintStatementNode printNode)
+                        {
+                            Assert.AreEqual("print", expectedNodes[index++]); // Check if it's a print statement
+                            Assert.AreEqual(expectedNodes[index++], GetValueAsString(printNode.Expression)); // Check the expression to be printed
+                        }
+                        else
+                        {
+                            throw new NotSupportedException($"Unsupported node type within function body: {bodyNode.GetType().Name}");
+                        }
+                    }
+                }
                 else
                 {
                     throw new NotSupportedException($"Unsupported node type: {node.GetType().Name}");
                 }
             }
-
         }
     }
 }

@@ -45,10 +45,28 @@ namespace sharPYieLib
             {
                 return ParsePrintStatement();
             }
+            else if (currentToken.Type == TokenType.Def)
+            {
+                return ParseFunctionDefinition();
+            }
+            else if (currentToken.Type == TokenType.Return)
+            {
+                return ParseReturnStatement();
+            }
             else
             {
-                throw new ParserException($"Unexpected token '{currentToken.Value}'");
+                throw new ParserException($"Unexpected token '{currentToken.Value}' - {nameof(ParseAssignmentOrStatement)}");
             }
+        }
+
+        private AstNode ParseReturnStatement()
+        {
+            position++; // Move past the 'return' token
+
+            // Parse the value expression after 'return'
+            AstNode value = ParseExpression();
+
+            return new ReturnStatementNode(value);
         }
 
         private AstNode ParseAssignment()
@@ -75,6 +93,68 @@ namespace sharPYieLib
 
             return new AssignmentNode(variableName, value);
         }
+
+        private AstNode ParseFunctionDefinition()
+        {
+            position++; // Move past the 'def' token
+
+            Token functionNameToken = tokens[position++]; // Get the function name token
+            string functionName = functionNameToken.Value;
+
+            if (position >= tokens.Count || tokens[position].Type != TokenType.LeftParen)
+            {
+                throw new ParserException("Expected a left parenthesis '(' after function name");
+            }
+
+            position++; // Move past the left parenthesis
+
+            var parameters = new List<string>();
+
+            // Parse function parameters
+            while (position < tokens.Count && tokens[position].Type != TokenType.RightParen)
+            {
+                Token parameterToken = tokens[position++]; // Get the parameter token
+
+                if (parameterToken.Type != TokenType.Identifier)
+                {
+                    throw new ParserException($"Expected an identifier for function parameter, but found '{parameterToken.Value}'");
+                }
+
+                parameters.Add(parameterToken.Value);
+
+                // Check for comma separator
+                if (position < tokens.Count && tokens[position].Type == TokenType.Comma)
+                {
+                    position++; // Move past the comma
+                }
+            }
+
+            if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
+            {
+                throw new ParserException("Expected a right parenthesis ')' after function parameters");
+            }
+
+            position++; // Move past the right parenthesis
+
+            // Check for colon token
+            if (position >= tokens.Count || tokens[position].Type != TokenType.Colon)
+            {
+                throw new ParserException("Expected a colon ':' after function parameters");
+            }
+
+            position++; // Move past the colon
+
+            // Parse function body
+            var body = new List<AstNode>();
+
+            while (position < tokens.Count && tokens[position].Type != TokenType.Identifier)
+            {
+                body.Add(ParseAssignmentOrStatement());
+            }
+
+            return new FunctionDefinitionNode(functionName, parameters, body);
+        }
+
 
         private AstNode ParseExpression()
         {
@@ -185,7 +265,7 @@ namespace sharPYieLib
             }
             else
             {
-                throw new ParserException($"Unexpected token '{currentToken.Value}'");
+                throw new ParserException($"Unexpected token '{currentToken.Value}' - {nameof(ParseFactor)}");
             }
         }
 
@@ -203,7 +283,7 @@ namespace sharPYieLib
             }
             else
             {
-                throw new ParserException($"Unexpected token '{currentToken.Value}'");
+                throw new ParserException($"Unexpected token '{currentToken.Value}'  - {nameof(ParseValue)}");
             }
         }
 
@@ -242,6 +322,73 @@ namespace sharPYieLib
         private bool IsOperator(TokenType type)
         {
             return type == TokenType.Plus || type == TokenType.Minus || type == TokenType.Multiply || type == TokenType.Divide;
+        }
+
+        public string PrintAST(List<AstNode> ast)
+        {
+            var stringBuilder = new StringBuilder();
+            PrintASTRecursive(ast, stringBuilder, 0);
+            return stringBuilder.ToString();
+        }
+
+        private void PrintASTRecursive(List<AstNode> ast, StringBuilder stringBuilder, int depth)
+        {
+            foreach (var node in ast)
+            {
+                if (node is AssignmentNode assignmentNode)
+                {
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Assignment: {assignmentNode.VariableName} = {GetValueAsString(assignmentNode.Value)}");
+                }
+                else if (node is IfStatementNode ifStatementNode)
+                {
+                    stringBuilder.AppendLine($"{GetIndent(depth)}If Statement:");
+                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Condition: {GetValueAsString(ifStatementNode.Condition)}");
+                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Body:");
+                    PrintASTRecursive(ifStatementNode.Body, stringBuilder, depth + 2);
+                }
+                else if (node is PrintStatementNode printStatementNode)
+                {
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Print Statement: {GetValueAsString(printStatementNode.Expression)}");
+                }
+                else if (node is FunctionDefinitionNode funcDefNode)
+                {
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Function Definition: {funcDefNode.FunctionName}({string.Join(", ", funcDefNode.Parameters)})");
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Body:");
+                    PrintASTRecursive(funcDefNode.Body, stringBuilder, depth + 1);
+                }
+                // Add other node types as needed
+            }
+        }
+
+        private string GetValueAsString(AstNode node)
+        {
+            if (node is IntLiteralNode intNode)
+            {
+                return intNode.Value.ToString();
+            }
+            else if (node is VariableNode varNode)
+            {
+                return varNode.Name;
+            }
+            else if (node is StringLiteralNode stringLiteralNode)
+            {
+                return $"\"{stringLiteralNode.Value}\"";
+            }
+            else if (node is BinaryOperationNode binaryOpNode)
+            {
+                string left = GetValueAsString(binaryOpNode.Left);
+                string right = GetValueAsString(binaryOpNode.Right);
+                return $"({left} {binaryOpNode.Operator} {right})";
+            }
+            else
+            {
+                throw new NotSupportedException($"Unsupported node type: {node.GetType().Name}");
+            }
+        }
+
+        private string GetIndent(int depth)
+        {
+            return new string(' ', depth * 4); // Adjust indentation level as needed
         }
     }
 
@@ -345,6 +492,30 @@ namespace sharPYieLib
         {
             // Remove surrounding quotes from the string value
             Value = value.Trim('"');
+        }
+    }
+
+    public class FunctionDefinitionNode : AstNode
+    {
+        public string FunctionName { get; }
+        public List<string> Parameters { get; }
+        public List<AstNode> Body { get; }
+
+        public FunctionDefinitionNode(string functionName, List<string> parameters, List<AstNode> body)
+        {
+            FunctionName = functionName;
+            Parameters = parameters;
+            Body = body;
+        }
+    }
+
+    public class ReturnStatementNode : AstNode
+    {
+        public AstNode ReturnValue { get; }
+
+        public ReturnStatementNode(AstNode returnValue)
+        {
+            ReturnValue = returnValue;
         }
     }
 }
