@@ -11,22 +11,42 @@ namespace sharPYieLib
     {
         private readonly string input;
         private int position;
+        private int indentationLevel;
+        private bool isAtLineBeginning;
 
         public Lexer(string input)
         {
-            this.input = input;
+            // Preprocess input to replace "\r\n" or "\n\r" with "\n" - All windows fault
+            this.input = input.Replace("\r\n", "\n").Replace("\n\r", "\n");
             this.position = 0;
+            this.indentationLevel = 0;
+            this.isAtLineBeginning = true;
         }
 
         public List<Token> Tokenize()
         {
             var tokens = new List<Token>();
+            int lineStartPosition = 0; // Track the position of the beginning of the line
 
             while (position < input.Length)
             {
-                if (char.IsWhiteSpace(input[position]))
+                var ch = input[position];
+                isAtLineBeginning = (position == 0 || input[position - 1] == '\n');
+                //if ( position != 0 && input[position - 1] == '\n')
+                //{
+                //    lineStartPosition = position;
+                //}
+                // TODO : Lexar needs to not just indent needs to sens undents
+
+
+                if (isAtLineBeginning && (input[position] == ' ' || input[position] == '\t'))
                 {
-                    position++; // Skip whitespace
+                    HandleIndentation(tokens, lineStartPosition); // Pass lineStartPosition to HandleIndentation
+                }
+                else if (char.IsWhiteSpace(input[position]))
+                {
+                    // Skip regular whitespace characters
+                    position++;
                 }
                 else if (char.IsDigit(input[position]))
                 {
@@ -196,6 +216,39 @@ namespace sharPYieLib
             return tokens;
         }
 
+        private void HandleIndentation(List<Token> tokens, int lineStartPosition)
+        {
+            int start = lineStartPosition; // Use lineStartPosition as the beginning of the line
+
+            // Count leading spaces or tabs
+            while (position < input.Length && (input[position] == ' ' || input[position] == '\t'))
+            {
+                position++;
+            }
+
+            int spaces = position - start;
+
+            // Compare with previous indentation level
+            if (spaces > indentationLevel)
+            {
+                int increase = spaces - indentationLevel;
+                for (int i = 0; i < increase; i++)
+                {
+                    indentationLevel++; 
+                }
+                tokens.Add(new Token(TokenType.IndentIncrease, "INDENT+"));
+            }
+            else if (spaces < indentationLevel)
+            {
+                int decrease = indentationLevel - spaces;
+                for (int i = 0; i < decrease; i++)
+                {
+                    indentationLevel--;
+                }
+                tokens.Add(new Token(TokenType.IndentDecrease, "INDENT-"));
+            }
+        }
+
         public void PrintTokensByType(List<Token> tokens)
         {
             Console.WriteLine("Token types:");
@@ -225,7 +278,9 @@ namespace sharPYieLib
         StringLiteral,
         Def,
         Comma,
-        Return
+        Return,
+        IndentIncrease,
+        IndentDecrease  
         // Add more token types as needed
     }
 

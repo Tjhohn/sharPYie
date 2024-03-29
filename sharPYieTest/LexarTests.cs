@@ -20,8 +20,11 @@ namespace sharPYieTest
                   TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.Divide, TokenType.Identifier,
                   TokenType.Minus, TokenType.Identifier)]
         [TestCase("x = 1\nif x == 1:\n    print(\"x is 1.\")", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
+            TokenType.If, TokenType.Identifier, TokenType.Equal, TokenType.Integer, TokenType.Colon, TokenType.IndentIncrease,
+            TokenType.Print, TokenType.LeftParen, TokenType.StringLiteral, TokenType.RightParen)]
+        [TestCase("x = 1\nif x == 1:\n    x=3", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
             TokenType.If, TokenType.Identifier, TokenType.Equal, TokenType.Integer, TokenType.Colon,
-            TokenType.Print, TokenType.LeftParen, TokenType.StringLiteral, TokenType.RightParen)] //problem child?
+            TokenType.IndentIncrease, TokenType.Identifier, TokenType.Assign, TokenType.Integer)]
         public void Tokenize_ValidInput_ReturnsCorrectTokens(string input, params TokenType[] expectedTokens)
         {
             var lexer = new Lexer(input);
@@ -42,7 +45,7 @@ namespace sharPYieTest
             Assert.Throws<LexerException>(() => lexer.Tokenize());
         }
 
-        [TestCase("testinputs/firstfunc.py", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Def, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Colon, TokenType.Return, TokenType.Identifier, TokenType.Plus, TokenType.Integer, TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Def, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.RightParen, TokenType.Colon, TokenType.Return, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen)]
+        [TestCase("testinputs/firstfunc.py", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Def, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Colon, TokenType.IndentIncrease, TokenType.Return, TokenType.Identifier, TokenType.Plus, TokenType.Integer, TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Def, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.RightParen, TokenType.Colon, TokenType.IndentIncrease, TokenType.Return, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen)]
         [TestCase("testinputs/stringliteraltoConsole.py", TokenType.Identifier, TokenType.Assign, TokenType.StringLiteral,
            TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen)]
         [TestCase("testinputs/simpleAssignment.py", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
@@ -64,10 +67,12 @@ namespace sharPYieTest
             var lexer = new Lexer(script);
             var tokens = lexer.Tokenize();
 
+            //lexer.PrintTokensByType(tokens);
+
             Assert.AreEqual(expectedTokens.Length, tokens.Count );
             for (int i = 0; i < expectedTokens.Length; i++)
             {
-                Assert.AreEqual(expectedTokens[i], tokens[i].Type);
+                Assert.AreEqual(expectedTokens[i], tokens[i].Type, $"expected {expectedTokens[i]} got {tokens[i].Type} at index : {i}");
             }
         }
     }
