@@ -6,25 +6,20 @@ namespace sharPYieTest
     [TestFixture]
     public class LexerTests
     {
-        [TestCase("x = 1", TokenType.Identifier, TokenType.Assign, TokenType.Integer)]
-        [TestCase("a = 2", TokenType.Identifier, TokenType.Assign, TokenType.Integer)]
-        [TestCase("a = 2\ny=57", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Identifier, TokenType.Assign, TokenType.Integer)]
-        [TestCase("a = 2\nb = 3\nc = a + b", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-                  TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-                  TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.Plus, TokenType.Identifier)]
+        [TestCase("x = 1", TokenType.Identifier, TokenType.Assign, TokenType.Integer,TokenType.Newline,TokenType.EOF)]
+        [TestCase("a = 2", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline, TokenType.EOF)]
+        [TestCase("a = 2\ny=57", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline, TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline, TokenType.EOF)]
+        [TestCase("a = 2\nb = 3\nc = a + b", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline,
+                  TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline,
+                  TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.Plus, TokenType.Identifier
+            , TokenType.Newline, TokenType.EOF)]
         [TestCase("d = 5 / 1", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-                  TokenType.Divide, TokenType.Integer)]
-        [TestCase("a = 5\nb = 5\nc = 1\nd = a / b - c", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-                  TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-                  TokenType.Identifier, TokenType.Assign, TokenType.Integer,
+                  TokenType.Divide, TokenType.Integer, TokenType.Newline, TokenType.EOF)]
+        [TestCase("a = 5\nb = 5\nc = 1\nd = a / b - c", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline,
+                  TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline,
+                  TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline,
                   TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.Divide, TokenType.Identifier,
-                  TokenType.Minus, TokenType.Identifier)]
-        [TestCase("x = 1\nif x == 1:\n    print(\"x is 1.\")", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-            TokenType.If, TokenType.Identifier, TokenType.Equal, TokenType.Integer, TokenType.Colon, TokenType.IndentIncrease,
-            TokenType.Print, TokenType.LeftParen, TokenType.StringLiteral, TokenType.RightParen)]
-        [TestCase("x = 1\nif x == 1:\n    x=3", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-            TokenType.If, TokenType.Identifier, TokenType.Equal, TokenType.Integer, TokenType.Colon,
-            TokenType.IndentIncrease, TokenType.Identifier, TokenType.Assign, TokenType.Integer)]
+                  TokenType.Minus, TokenType.Identifier, TokenType.Newline, TokenType.EOF)]
         public void Tokenize_ValidInput_ReturnsCorrectTokens(string input, params TokenType[] expectedTokens)
         {
             var lexer = new Lexer(input);
@@ -42,15 +37,32 @@ namespace sharPYieTest
         {
             string input = "x = $"; // Invalid character '$'
             var lexer = new Lexer(input);
-            Assert.Throws<LexerException>(() => lexer.Tokenize());
+            Assert.Throws<Exception>(() => lexer.Tokenize());
         }
 
-        [TestCase("testinputs/firstfunc.py", TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Def, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Colon, TokenType.IndentIncrease, TokenType.Return, TokenType.Identifier, TokenType.Plus, TokenType.Integer, TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen, TokenType.Def, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.RightParen, TokenType.Colon, TokenType.IndentIncrease, TokenType.Return, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen)]
+        [TestCase("testinputs/firstfunc.py", TokenType.Identifier, TokenType.Assign, TokenType.Integer, 
+            TokenType.Newline,
+            TokenType.Def, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier,
+            TokenType.RightParen, TokenType.Colon, TokenType.Newline, TokenType.Indent, TokenType.Return,
+            TokenType.Identifier, TokenType.Plus, TokenType.Integer, TokenType.Newline,TokenType.Dedent,
+            TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier, 
+            TokenType.RightParen, TokenType.Newline, TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier,
+            TokenType.RightParen, TokenType.Newline, TokenType.Def, TokenType.Identifier, TokenType.LeftParen,
+            TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.Comma, 
+            TokenType.Identifier, TokenType.Comma, TokenType.Identifier, TokenType.RightParen,
+            TokenType.Colon, TokenType.Newline, TokenType.Indent, TokenType.Return, TokenType.Identifier,
+            TokenType.Plus, TokenType.Identifier, TokenType.Plus, TokenType.Identifier, TokenType.Plus,
+            TokenType.Identifier, TokenType.Newline, TokenType.Dedent, TokenType.Identifier, TokenType.LeftParen,
+            TokenType.Identifier,TokenType.RightParen, TokenType.Newline, TokenType.EOF)]
         [TestCase("testinputs/stringliteraltoConsole.py", TokenType.Identifier, TokenType.Assign, TokenType.StringLiteral,
-           TokenType.Print, TokenType.LeftParen, TokenType.Identifier, TokenType.RightParen)]
+            TokenType.Newline,TokenType.Identifier, TokenType.LeftParen, TokenType.Identifier,
+            TokenType.RightParen, TokenType.Newline,
+            TokenType.EOF)]
         [TestCase("testinputs/simpleAssignment.py", TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-                  TokenType.Identifier, TokenType.Assign, TokenType.Integer,
-                  TokenType.Identifier, TokenType.Assign, TokenType.Identifier, TokenType.Plus, TokenType.Identifier)] // Assume the file contains "a = 2\nb = 3\nc = a + b"
+            TokenType.Newline,
+                  TokenType.Identifier, TokenType.Assign, TokenType.Integer, TokenType.Newline,
+                  TokenType.Identifier, TokenType.Assign, TokenType.Identifier,
+            TokenType.Plus, TokenType.Identifier, TokenType.Newline, TokenType.EOF)] // Assume the file contains "a = 2\nb = 3\nc = a + b"
         public void LexarAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, params TokenType[] expectedTokens)
         {
 

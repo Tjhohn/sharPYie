@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,7 +24,12 @@ namespace sharPYieLib
 
             while (position < tokens.Count)
             {
-                ast.Add(ParseAssignmentOrStatement());
+                var ast_node = ParseAssignmentOrStatement();
+                if (ast_node != null)
+                {
+                    ast.Add(ast_node);
+                }
+                
             }
 
             return ast;
@@ -35,15 +41,15 @@ namespace sharPYieLib
 
             if (currentToken.Type == TokenType.Identifier)
             {
+                if (currentToken.Value == "print")
+                {
+                    return ParsePrintStatement();
+                }
                 return ParseAssignment();
             }
             else if (currentToken.Type == TokenType.If)
             {
                 return ParseIfStatement();
-            }
-            else if (currentToken.Type == TokenType.Print)
-            {
-                return ParsePrintStatement();
             }
             else if (currentToken.Type == TokenType.Def)
             {
@@ -53,9 +59,29 @@ namespace sharPYieLib
             {
                 return ParseReturnStatement();
             }
+            else if (currentToken.Type == TokenType.Newline)
+            {
+                position++;
+                return null; //unsure what else to deal with hear?
+            }
+            else if (currentToken.Type == TokenType.EOF)
+            {
+                position++;
+                return null; //unsure what else to do? for eof? I think I wil need to handle multiple eof...
+            }
+            else if (currentToken.Type == TokenType.Indent)
+            {
+                position++;
+                return null; // I think indent should be only really for making proper "blocks"
+            }
+            else if (currentToken.Type == TokenType.Dedent)
+            {
+                position++;
+                return null; // detent only for blocks? maybe need to handle assignmets and functions
+            }
             else
             {
-                throw new ParserException($"Unexpected token '{currentToken.Value}' - {nameof(ParseAssignmentOrStatement)}");
+                throw new ParserException($"Unexpected token : type {currentToken.Type} -> '{currentToken.Value}'  - {nameof(ParseAssignmentOrStatement)}");
             }
         }
 

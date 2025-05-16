@@ -9,244 +9,204 @@ namespace sharPYieLib
 {
     public class Lexer
     {
-        private readonly string input;
-        private int position;
-        private int indentationLevel;
-        private bool isAtLineBeginning;
+        private readonly string[] _lines;
+        private readonly List<Token> _tokens = new();
+        private readonly Stack<int> _indentStack = new();
+
+        private static readonly Dictionary<string, TokenType> KeywordMap = new()
+        {
+            ["if"] = TokenType.If,
+            ["elif"] = TokenType.Elif,
+            ["else"] = TokenType.Else,
+            ["for"] = TokenType.For,
+            ["while"] = TokenType.While,
+            ["def"] = TokenType.Def,
+            ["class"] = TokenType.Class,
+            ["return"] = TokenType.Return,
+            ["import"] = TokenType.Import,
+            ["from"] = TokenType.From,
+            ["as"] = TokenType.As,
+            ["pass"] = TokenType.Pass,
+            ["break"] = TokenType.Break,
+            ["continue"] = TokenType.Continue,
+            ["in"] = TokenType.In,
+            ["is"] = TokenType.Is,
+            ["not"] = TokenType.Not,
+            ["and"] = TokenType.And,
+            ["or"] = TokenType.Or,
+            ["None"] = TokenType.None,
+            ["True"] = TokenType.True,
+            ["False"] = TokenType.False,
+            ["with"] = TokenType.With,
+            ["try"] = TokenType.Try,
+            ["except"] = TokenType.Except,
+            ["finally"] = TokenType.Finally,
+            ["raise"] = TokenType.Raise,
+            ["global"] = TokenType.Global,
+            ["nonlocal"] = TokenType.Nonlocal,
+            ["assert"] = TokenType.Assert,
+            ["lambda"] = TokenType.Lambda,
+            ["yield"] = TokenType.Yield,
+            ["await"] = TokenType.Await,
+            ["async"] = TokenType.Async
+        };
 
         public Lexer(string input)
         {
             // Preprocess input to replace "\r\n" or "\n\r" with "\n" - All windows fault
-            this.input = input.Replace("\r\n", "\n").Replace("\n\r", "\n");
-            this.position = 0;
-            this.indentationLevel = 0;
-            this.isAtLineBeginning = true;
+            this._lines = input.Replace("\r\n", "\n").Replace("\n\r", "\n").Split("\n");
+            _indentStack.Push(0);
         }
 
         public List<Token> Tokenize()
         {
-            var tokens = new List<Token>();
-            int lineStartPosition = 0; // Track the position of the beginning of the line
-
-            while (position < input.Length)
+            for (int i = 0; i < _lines.Length; i++)
             {
-                var ch = input[position];
-                isAtLineBeginning = (position == 0 || input[position - 1] == '\n');
-                //if ( position != 0 && input[position - 1] == '\n')
-                //{
-                //    lineStartPosition = position;
-                //}
-                // TODO : Lexar needs to not just indent needs to sens undents
-
-
-                if (isAtLineBeginning && (input[position] == ' ' || input[position] == '\t'))
-                {
-                    HandleIndentation(tokens, lineStartPosition); // Pass lineStartPosition to HandleIndentation
-                }
-                else if (char.IsWhiteSpace(input[position]))
-                {
-                    // Skip regular whitespace characters
-                    position++;
-                }
-                else if (char.IsDigit(input[position]))
-                {
-                    // Tokenize integers
-                    string integer = "";
-                    while (position < input.Length && char.IsDigit(input[position]))
-                    {
-                        integer += input[position];
-                        position++;
-                    }
-                    tokens.Add(new Token(TokenType.Integer, integer));
-                }
-                else if (char.IsLetter(input[position]))
-                {
-                    // Tokenize identifiers or keywords
-                    string identifier = "";
-                    while (position < input.Length && (char.IsLetter(input[position]) || char.IsDigit(input[position])))
-                    {
-                        identifier += input[position];
-                        position++;
-                    }
-                    switch (identifier)
-                    {
-                        case "if":
-                            tokens.Add(new Token(TokenType.If, "if"));
-                            break;
-                        case "print":
-                            tokens.Add(new Token(TokenType.Print, "print"));
-                            break;
-                        case "def":
-                            tokens.Add(new Token(TokenType.Def, "def"));
-                            break;
-                        case "return":
-                            tokens.Add(new Token(TokenType.Return, "return"));
-                            break;
-                        default:
-                            tokens.Add(new Token(TokenType.Identifier, identifier));
-                            break;
-                    }
-                }
-                else if (input[position] == '"')
-                {
-                    // Tokenize string literals
-                    string literal = "\"";
-                    position++;
-                    while (position < input.Length && input[position] != '"')
-                    {
-                        literal += input[position];
-                        position++;
-                    }
-                    if (position == input.Length)
-                    {
-                        throw new LexerException("Unterminated string literal.");
-                    }
-                    literal += input[position]; // Add closing quote
-                    tokens.Add(new Token(TokenType.StringLiteral, literal));
-                    position++;
-                }
-                else if (input[position] == '=')
-                {
-                    // Handle '=='
-                    if (position + 1 < input.Length && input[position + 1] == '=')
-                    {
-                        tokens.Add(new Token(TokenType.Equal, "=="));
-                        position += 2;
-                    }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Assign, "="));
-                        position++;
-                    }
-                }
-                else if (input[position] == '(')
-                {
-                    // Tokenize left parenthesis
-                    tokens.Add(new Token(TokenType.LeftParen, "("));
-                    position++;
-
-                    // Tokenize function parameters
-                    while (position < input.Length && input[position] != ')')
-                    {
-                        // Skip whitespace
-                        if (char.IsWhiteSpace(input[position]))
-                        {
-                            position++;
-                            continue;
-                        }
-
-                        // Tokenize string literals
-                        if (input[position] == '"')
-                        {
-                            string literal = "\"";
-                            position++;
-                            while (position < input.Length && input[position] != '"')
-                            {
-                                literal += input[position];
-                                position++;
-                            }
-                            if (position == input.Length)
-                            {
-                                throw new LexerException("Unterminated string literal.");
-                            }
-                            literal += input[position]; // Add closing quote
-                            tokens.Add(new Token(TokenType.StringLiteral, literal));
-                            position++;
-                        }
-                        // Tokenize integer literals
-                        else if (char.IsDigit(input[position]))
-                        {
-                            string integer = "";
-                            while (position < input.Length && char.IsDigit(input[position]))
-                            {
-                                integer += input[position];
-                                position++;
-                            }
-                            tokens.Add(new Token(TokenType.Integer, integer));
-                        }
-
-                        // Tokenize parameter identifier
-                        if (char.IsLetterOrDigit(input[position]) || input[position] == '_')
-                        {
-                            string parameter = "";
-                            while (position < input.Length && (char.IsLetterOrDigit(input[position]) || input[position] == '_'))
-                            {
-                                parameter += input[position];
-                                position++;
-                            }
-                            tokens.Add(new Token(TokenType.Identifier, parameter));
-                        }
-
-                        // Tokenize comma separator
-                        if (position < input.Length && input[position] == ',')
-                        {
-                            tokens.Add(new Token(TokenType.Comma, ","));
-                            position++;
-                        }
-                    }
-
-                    // Tokenize right parenthesis
-                    tokens.Add(new Token(TokenType.RightParen, ")"));
-                    position++;
-                }
-                else
-                {
-                    // Handle other token types
-                    switch (input[position])
-                    {
-                        case '/':
-                            tokens.Add(new Token(TokenType.Divide, "/"));
-                            break;
-                        case '-':
-                            tokens.Add(new Token(TokenType.Minus, "-"));
-                            break;
-                        case '+':
-                            tokens.Add(new Token(TokenType.Plus, "+"));
-                            break;
-                        case ':':
-                            tokens.Add(new Token(TokenType.Colon, ":"));
-                            break;
-                        default:
-                            throw new LexerException($"Unexpected character '{input[position]}' at position {position}.");
-                    }
-                    position++;
-                }
+                string line = _lines[i];
+                ProcessLine(line, i + 1);
             }
 
-            return tokens;
+            while (_indentStack.Count > 1)
+            {
+                _tokens.Add(new Token(TokenType.Dedent, "", _lines.Length, 0));
+                _indentStack.Pop();
+            }
+
+            _tokens.Add(new Token(TokenType.EOF, "", _lines.Length + 1, 0));
+            return _tokens;
         }
 
-        private void HandleIndentation(List<Token> tokens, int lineStartPosition)
+        private void ProcessLine(string line, int lineNum)
         {
-            int start = lineStartPosition; // Use lineStartPosition as the beginning of the line
+            if (string.IsNullOrWhiteSpace(line)) return;
 
-            // Count leading spaces or tabs
-            while (position < input.Length && (input[position] == ' ' || input[position] == '\t'))
+            int indent = line.TakeWhile(char.IsWhiteSpace).Count();
+            int col = 0;
+
+            if (indent > _indentStack.Peek())
             {
-                position++;
+                _tokens.Add(new Token(TokenType.Indent, "", lineNum, col));
+                _indentStack.Push(indent);
+            }
+            while (indent < _indentStack.Peek())
+            {
+                _tokens.Add(new Token(TokenType.Dedent, "", lineNum, col));
+                _indentStack.Pop();
             }
 
-            int spaces = position - start;
-
-            // Compare with previous indentation level
-            if (spaces > indentationLevel)
+            for (int pos = indent; pos < line.Length;)
             {
-                int increase = spaces - indentationLevel;
-                for (int i = 0; i < increase; i++)
+                char c = line[pos];
+                col = pos;
+
+                if (char.IsWhiteSpace(c)) { pos++; continue; }
+
+                // COMMENT
+                if (c == '#')
                 {
-                    indentationLevel++; 
+                    _tokens.Add(new Token(TokenType.Comment, line[pos..], lineNum, pos));
+                    break;
                 }
-                tokens.Add(new Token(TokenType.IndentIncrease, "INDENT+"));
-            }
-            else if (spaces < indentationLevel)
-            {
-                int decrease = indentationLevel - spaces;
-                for (int i = 0; i < decrease; i++)
+
+                // IDENTIFIERS & KEYWORDS
+                if (char.IsLetter(c) || c == '_')
                 {
-                    indentationLevel--;
+                    int start = pos;
+                    while (pos < line.Length && (char.IsLetterOrDigit(line[pos]) || line[pos] == '_'))
+                        pos++;
+
+                    string word = line[start..pos];
+
+                    if (KeywordMap.TryGetValue(word, out var keywordType))
+                        _tokens.Add(new Token(keywordType, word, lineNum, start));
+                    else
+                        _tokens.Add(new Token(TokenType.Identifier, word, lineNum, start));
+
+                    continue;
                 }
-                tokens.Add(new Token(TokenType.IndentDecrease, "INDENT-"));
+
+                // NUMBERS
+                if (char.IsDigit(c))
+                {
+                    int start = pos;
+                    while (pos < line.Length && (char.IsDigit(line[pos]) || line[pos] == '.'))
+                        pos++;
+                    _tokens.Add(new Token(TokenType.Integer, line[start..pos], lineNum, start));
+                    continue;
+                }
+
+                // STRINGS & F-STRINGS
+                if (c == '"' || c == '\'')
+                {
+                    int start = pos;
+                    char quote = c;
+                    bool isFString = (start > 0 && line[start - 1] == 'f');
+
+                    pos++;  // skip opening quote
+                    while (pos < line.Length && line[pos] != quote)
+                    {
+                        if (line[pos] == '\\') pos++;  // skip escaped char
+                        pos++;
+                    }
+                    pos++;  // skip closing quote
+                    string val = line[start..pos];
+                    var type = isFString ? TokenType.Fstring : TokenType.StringLiteral;
+                    _tokens.Add(new Token(type, val, lineNum, start));
+                    continue;
+                }
+
+                // OPERATORS (multi-char first)
+                if (line[pos..].StartsWith("=="))
+                {
+                    _tokens.Add(new Token(TokenType.Equal, "==", lineNum, pos));
+                    pos += 2; continue;
+                }
+                if (line[pos..].StartsWith("!="))
+                {
+                    _tokens.Add(new Token(TokenType.NotEqual, "!=", lineNum, pos));
+                    pos += 2; continue;
+                }
+                if (line[pos..].StartsWith(">="))
+                {
+                    _tokens.Add(new Token(TokenType.GreaterEqual, ">=", lineNum, pos));
+                    pos += 2; continue;
+                }
+                if (line[pos..].StartsWith("<="))
+                {
+                    _tokens.Add(new Token(TokenType.LessEqual, "<=", lineNum, pos));
+                    pos += 2; continue;
+                }
+
+                // SINGLE-CHAR OPERATORS
+                switch (c)
+                {
+                    case '=': _tokens.Add(new Token(TokenType.Assign, "=", lineNum, pos)); break;
+                    case '+': _tokens.Add(new Token(TokenType.Plus, "+", lineNum, pos)); break;
+                    case '-': _tokens.Add(new Token(TokenType.Minus, "-", lineNum, pos)); break;
+                    case '*': _tokens.Add(new Token(TokenType.Multiply, "*", lineNum, pos)); break;
+                    case '/': _tokens.Add(new Token(TokenType.Divide, "/", lineNum, pos)); break;
+                    case '>': _tokens.Add(new Token(TokenType.Greater, ">", lineNum, pos)); break;
+                    case '<': _tokens.Add(new Token(TokenType.Less, "<", lineNum, pos)); break;
+
+                    case '(': _tokens.Add(new Token(TokenType.LeftParen, "(", lineNum, pos)); break;
+                    case ')': _tokens.Add(new Token(TokenType.RightParen, ")", lineNum, pos)); break;
+                    case '[': _tokens.Add(new Token(TokenType.LeftBracket, "[", lineNum, pos)); break;
+                    case ']': _tokens.Add(new Token(TokenType.RightBracket, "]", lineNum, pos)); break;
+                    case '{': _tokens.Add(new Token(TokenType.LeftBrace, "{", lineNum, pos)); break;
+                    case '}': _tokens.Add(new Token(TokenType.RightBrace, "}", lineNum, pos)); break;
+                    case ':': _tokens.Add(new Token(TokenType.Colon, ":", lineNum, pos)); break;
+                    case ',': _tokens.Add(new Token(TokenType.Comma, ",", lineNum, pos)); break;
+                    case '.': _tokens.Add(new Token(TokenType.Dot, ".", lineNum, pos)); break;
+                    case ';': _tokens.Add(new Token(TokenType.Semicolon, ";", lineNum, pos)); break;
+
+                    default:
+                        throw new Exception($"Unexpected character '{c}' at {lineNum}:{pos}");
+                }
+
+                pos++;  // advance after single-char token
             }
+
+            _tokens.Add(new Token(TokenType.Newline, "", lineNum, line.Length));
         }
 
         public void PrintTokensByType(List<Token> tokens)
@@ -261,38 +221,95 @@ namespace sharPYieLib
     }
 
     public enum TokenType
-    {
-        Identifier,
-        Assign,
-        Divide,
-        Integer,
-        Minus,
-        Plus,
-        Multiply,
-        If,
-        Print,
-        Equal,
-        Colon,
-        LeftParen,
-        RightParen,
-        StringLiteral,
-        Def,
-        Comma,
-        Return,
-        IndentIncrease,
-        IndentDecrease  
-        // Add more token types as needed
-    }
+{
+    Identifier,
+    Assign,         // =
+    Divide,         // /
+    Integer,
+    Minus,          // -
+    Plus,           // +
+    Multiply,       // *
+    Equal,          // ==
+    NotEqual,       // !=
+    Greater,        // >
+    GreaterEqual,   // >=
+    Less,           // <
+    LessEqual,      // <=
+    LeftParen,      // (
+    RightParen,     // )
+    LeftBracket,    // [
+    RightBracket,   // ]
+    LeftBrace,      // {
+    RightBrace,     // }
+    Comma,          // ,
+    Colon,          // :
+    Dot,            // .
+    Semicolon,      // ;
 
-    public class Token
+    // Keywords
+    If,
+    Elif,
+    Else,
+    For,
+    While,
+    Def,
+    Class,
+    Return,
+    Import,
+    From,
+    As,
+    Pass,
+    Break,
+    Continue,
+    In,
+    Is,
+    Not,
+    And,
+    Or,
+    None,
+    True,
+    False,
+    With,
+    Try,
+    Except,
+    Finally,
+    Raise,
+    Global,
+    Nonlocal,
+    Assert,
+    Lambda,
+    Yield,
+    Await,
+    Async,
+
+    // Literals and structure
+    StringLiteral,
+    Fstring,
+    Indent,
+    Dedent,
+    Comment,
+    Newline,
+    EOF
+}
+
+public class Token
     {
         public TokenType Type { get; }
         public string Value { get; }
+        public int Line { get; }
+        public int Column { get; }
 
-        public Token(TokenType type, string value)
+        public Token(TokenType type, string value, int line, int column)
         {
             Type = type;
             Value = value;
+            Line = line;
+            Column = column;
+        }
+
+        public override string ToString()
+        {
+            return $"{Type}({Value}) @ {Line}:{Column}";
         }
     }
 
