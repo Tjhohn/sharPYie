@@ -56,7 +56,7 @@ namespace sharPYieTest
         [TestCase("a = 2\nb = 3\nc = a + b", "a", "2", "b", "3", "c", "(a + b)")]
         [TestCase("a = 5\nb = 5\nc = 1\nd = a / b - c", "a", "5", "b", "5", "c", "1", "d", "((a / b) - c)")]
         [TestCase("x =1\nif x ==1:\n    print(\"x is 1\")\nx = 2\nif x ==1:\n    print(\"x is 1\")",
-      "x", "1", "if", "(x == 1)","x", "2", "if", "(x == 1)", "print", "\"x is 1\"", "x", "2", "x", "1", "if", "(x == 1)", "print", "\"x is 1\"")]
+      "x", "1", "if", "(x == 1)", "print", "x is 1", "x", "2", "if", "(x == 1)", "print", "x is 1")]
         public void ParseAssignment_ValidInput_ReturnsCorrectResult(string input, params string[] expectedNodes)
         {
             var lexer = new Lexer(input);
@@ -108,7 +108,7 @@ namespace sharPYieTest
             }
         }
 
-        [TestCase("testinputs/firstfunc.py", "a", "1" )]
+        [TestCase("testinputs/firstfunc.py", "a", "1", "def" )]
         [TestCase("testinputs/stringliteraltoConsole.py", "temp", "this is a straight up string", "print", "temp")] // print string
         [TestCase("testinputs/ifAndPrint.py", "a", "56", "b", "9", "d", "4", "x", "1", "if", "(x == 1)", "x", "(((a / d) - b) + x)", "Print", "\"x is 1\"", "if", "(x == 1)", "x", "a", "/", "d", "-", "b", "+", "x")] // file has an if and end result x should be 2
         [TestCase("testinputs/simpleAssignment.py", "a", "2", "b", "3", "c", "(a + b)")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
@@ -128,8 +128,8 @@ namespace sharPYieTest
             var tokens = lexer.Tokenize();
             var parser = new Parser(tokens);
             var ast = parser.Parse();
-            Console.WriteLine(parser.PrintAST(ast));
-            
+            TestContext.WriteLine(parser.PrintAST(ast));
+
 
             int index = 0;
             foreach (var node in ast)

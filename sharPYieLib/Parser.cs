@@ -175,7 +175,12 @@ namespace sharPYieLib
 
             while (position < tokens.Count && tokens[position].Type != TokenType.Identifier)
             {
-                body.Add(ParseAssignmentOrStatement());
+                
+                var bodyNode = ParseAssignmentOrStatement();
+                if ( bodyNode != null)
+                {
+                    body.Add(bodyNode);
+                }
             }
 
             return new FunctionDefinitionNode(functionName, parameters, body);
@@ -330,7 +335,11 @@ namespace sharPYieLib
 
             while (position < tokens.Count && tokens[position].Type != TokenType.Identifier)
             {
-                body.Add(ParseAssignmentOrStatement());
+                var node = ParseAssignmentOrStatement();
+                if (node != null)
+                {
+                    body.Add(node);
+                } 
             }
 
             return new IfStatementNode(condition, body);
@@ -361,30 +370,82 @@ namespace sharPYieLib
         {
             foreach (var node in ast)
             {
-                if (node is AssignmentNode assignmentNode)
+                switch (node)
                 {
-                    stringBuilder.AppendLine($"{GetIndent(depth)}Assignment: {assignmentNode.VariableName} = {GetValueAsString(assignmentNode.Value)}");
+                    case AssignmentNode assignmentNode:
+                        stringBuilder.AppendLine($"{GetIndent(depth)}[Depth {depth}] Assignment: {assignmentNode.VariableName} =");
+                        PrintExpression(assignmentNode.Value, stringBuilder, depth + 1);
+                        break;
+
+                    case PrintStatementNode printNode:
+                        stringBuilder.AppendLine($"{GetIndent(depth)}[Depth {depth}] Print Statement:");
+                        PrintExpression(printNode.Expression, stringBuilder, depth + 1);
+                        break;
+
+                    case IfStatementNode ifNode:
+                        stringBuilder.AppendLine($"{GetIndent(depth)}[Depth {depth}] If Statement:");
+                        stringBuilder.AppendLine($"{GetIndent(depth + 1)}Condition:");
+                        PrintExpression(ifNode.Condition, stringBuilder, depth + 2);
+                        stringBuilder.AppendLine($"{GetIndent(depth + 1)}Body:");
+                        PrintASTRecursive(ifNode.Body, stringBuilder, depth + 2);
+                        break;
+
+                    case ReturnStatementNode returnNode:
+                        stringBuilder.AppendLine($"{GetIndent(depth)}[Depth {depth}] Return Statement:");
+                        PrintExpression(returnNode.ReturnValue, stringBuilder, depth + 1);
+                        break;
+
+                    case FunctionDefinitionNode funcNode:
+                        stringBuilder.AppendLine($"{GetIndent(depth)}[Depth {depth}] Function Definition: {funcNode.FunctionName}({string.Join(", ", funcNode.Parameters)})");
+                        stringBuilder.AppendLine($"{GetIndent(depth + 1)}Body:");
+                        PrintASTRecursive(funcNode.Body, stringBuilder, depth + 2);
+                        break;
+
+                    default:
+                        PrintExpression(node, stringBuilder, depth);
+                        break;
                 }
-                else if (node is IfStatementNode ifStatementNode)
-                {
-                    stringBuilder.AppendLine($"{GetIndent(depth)}If Statement:");
-                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Condition: {GetValueAsString(ifStatementNode.Condition)}");
-                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Body:");
-                    PrintASTRecursive(ifStatementNode.Body, stringBuilder, depth + 2);
-                }
-                else if (node is PrintStatementNode printStatementNode)
-                {
-                    stringBuilder.AppendLine($"{GetIndent(depth)}Print Statement: {GetValueAsString(printStatementNode.Expression)}");
-                }
-                else if (node is FunctionDefinitionNode funcDefNode)
-                {
-                    stringBuilder.AppendLine($"{GetIndent(depth)}Function Definition: {funcDefNode.FunctionName}({string.Join(", ", funcDefNode.Parameters)})");
-                    stringBuilder.AppendLine($"{GetIndent(depth)}Body:");
-                    PrintASTRecursive(funcDefNode.Body, stringBuilder, depth + 1);
-                }
-                // Add other node types as needed
             }
         }
+
+        private void PrintExpression(AstNode node, StringBuilder stringBuilder, int depth)
+        {
+            switch (node)
+            {
+                case IntLiteralNode intNode:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Int Literal: {intNode.Value}");
+                    break;
+
+                case StringLiteralNode stringNode:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}String Literal: \"{stringNode.Value}\"");
+                    break;
+
+                case VariableNode varNode:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Variable: {varNode.Name}");
+                    break;
+
+                case BinaryOperationNode binOp:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Binary Operation: {binOp.Operator}");
+                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Left:");
+                    PrintExpression(binOp.Left, stringBuilder, depth + 2);
+                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Right:");
+                    PrintExpression(binOp.Right, stringBuilder, depth + 2);
+                    break;
+
+                case FunctionCallNode callNode:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Function Call: {callNode.FunctionName}");
+                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Argument:");
+                    PrintExpression(callNode.Argument, stringBuilder, depth + 2);
+                    break;
+
+                default:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}[Unknown Expression Type: {node.GetType().Name}]");
+                    break;
+            }
+        }
+
+
+
 
         private string GetValueAsString(AstNode node)
         {
@@ -398,13 +459,17 @@ namespace sharPYieLib
             }
             else if (node is StringLiteralNode stringLiteralNode)
             {
-                return $"\"{stringLiteralNode.Value}\"";
+                return $"{stringLiteralNode.Value}";
             }
             else if (node is BinaryOperationNode binaryOpNode)
             {
                 string left = GetValueAsString(binaryOpNode.Left);
                 string right = GetValueAsString(binaryOpNode.Right);
                 return $"({left} {binaryOpNode.Operator} {right})";
+            }
+            else if (node is FunctionCallNode callNode)
+            {
+                return $"({callNode.FunctionName} args : {GetValueAsString(callNode.Argument)} )";
             }
             else
             {
@@ -430,7 +495,7 @@ namespace sharPYieLib
         {
         }
 
-        public class AssignmentNode : AstNode
+    public class AssignmentNode : AstNode
         {
             public string VariableName { get; }
             public AstNode Value { get; }
@@ -442,7 +507,7 @@ namespace sharPYieLib
             }
         }
 
-        public class IntLiteralNode : AstNode
+    public class IntLiteralNode : AstNode
         {
             public int Value { get; }
 
