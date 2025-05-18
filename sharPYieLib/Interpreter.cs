@@ -6,10 +6,11 @@ namespace sharPYieLib
     public class Interpreter
     {
         private readonly Dictionary<string, object> environment;
+        private readonly Dictionary<string, FunctionDefinitionNode> functions = new();
 
-        public Interpreter()
+        public Interpreter(Dictionary<string, object>? env = null)
         {
-            environment = new Dictionary<string, object>();
+            environment = env ?? new Dictionary<string, object>();
         }
 
         public void Interpret(List<AstNode> ast)
@@ -61,6 +62,15 @@ namespace sharPYieLib
                 // Print the value
                 Console.WriteLine(expressionValue);
             }
+            else if (node is FunctionDefinitionNode funcNode)
+            {
+                functions[funcNode.FunctionName] = funcNode;
+            }
+            else if (node is ReturnStatementNode returnNode)
+            {
+                object value = EvaluateExpression(returnNode.ReturnValue);
+                throw new ReturnSignal(value);
+            }
             else
             {
                 throw new ArgumentException($"Unsupported node type: {node.GetType().Name}");
@@ -97,6 +107,31 @@ namespace sharPYieLib
                     throw new ArgumentException($"Variable '{variableNode.Name}' is not defined.");
                 }
             }
+            else if (node is FunctionCallNode callNode)
+            {
+                if (!functions.TryGetValue(callNode.FunctionName, out var function))
+                    throw new ArgumentException($"Function '{callNode.FunctionName}' is not defined.");
+
+                var argValue = EvaluateExpression(callNode.Argument);
+
+                var localInterpreter = new Interpreter();
+
+                if (function.Parameters.Count != 1)
+                    throw new NotImplementedException("Only single-argument functions are supported for now.");
+
+                localInterpreter.environment[function.Parameters[0]] = argValue;
+
+                try
+                {
+                    localInterpreter.Interpret(function.Body);
+                }
+                catch (ReturnSignal signal)
+                {
+                    return signal.Value;
+                }
+
+                return null;
+            }
             else
             {
                 throw new ArgumentException($"Unsupported expression type: {node.GetType().Name}");
@@ -121,6 +156,16 @@ namespace sharPYieLib
                     return left == right ? 1 : 0;
                 default:
                     throw new ArgumentException($"Unsupported operator: {op}");
+            }
+        }
+
+        private class ReturnSignal : Exception
+        {
+            public object Value { get; }
+
+            public ReturnSignal(object value)
+            {
+                Value = value;
             }
         }
     }
