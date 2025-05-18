@@ -38,8 +38,9 @@ namespace sharPYieTest
         }
 
         [TestCase("testinputs/stringliteraltoConsole.py", "this is a straight up string", "this is a straight up string")] // print string
-        [TestCase("testinputs/ifAndPrint.py", 6, "x is 1")] // file has an if and end result x should be 2
+        [TestCase("testinputs/ifAndPrint.py", 6, "x is 1\n6")] // file has an if and end result x should be 2
         [TestCase("testinputs/simpleAssignment.py", 5, "")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
+        [TestCase("testinputs/firstfunc.py", 2, "2\n2")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
         public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
         {
 
@@ -66,8 +67,8 @@ namespace sharPYieTest
 
                 interpreter.Interpret(ast);
 
-                // Get the printed output
-                string printedOutput = sw.ToString().Trim();
+                // Get the printed output, remove /r to hopefully be consistent across os's but not really a focus
+                string printedOutput = sw.ToString().Replace("\r\n", "\n").Replace("\n\r", "\n").Trim();
 
                 // Verify the printed output matches the expected result
                 Assert.AreEqual(expectedString, printedOutput);

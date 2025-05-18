@@ -108,9 +108,10 @@ namespace sharPYieTest
             }
         }
 
-        [TestCase("testinputs/firstfunc.py", "a", "1", "def" )]
+        // Theses where to hard to "do" and maintain
+        // [TestCase("testinputs/firstfunc.py", "a", "1", "def", "addOne", "val" )]
         [TestCase("testinputs/stringliteraltoConsole.py", "temp", "this is a straight up string", "print", "temp")] // print string
-        [TestCase("testinputs/ifAndPrint.py", "a", "56", "b", "9", "d", "4", "x", "1", "if", "(x == 1)", "x", "(((a / d) - b) + x)", "Print", "\"x is 1\"", "if", "(x == 1)", "x", "a", "/", "d", "-", "b", "+", "x")] // file has an if and end result x should be 2
+        [TestCase("testinputs/ifAndPrint.py", "a", "56", "b", "9", "d", "4", "x", "1", "if", "(x == 1)", "print", "x is 1", "if", "(x == 1)", "x", "(((a / d) - b) + x)", "print", "x")] // file has an if and end result x should be 2
         [TestCase("testinputs/simpleAssignment.py", "a", "2", "b", "3", "c", "(a + b)")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
         public void ParseAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, params string[] expectedNodes)
         {
@@ -209,5 +210,78 @@ namespace sharPYieTest
                 }
             }
         }
+
+
+        [TestCase("testinputs/firstfunc.py", @"
+[Depth 0] Assignment: a =
+    Int Literal: 1
+[Depth 0] Function Definition: addOne(val)
+    Body:
+        [Depth 2] Return Statement:
+            Binary Operation: +
+                Left:
+                    Variable: val
+                Right:
+                    Int Literal: 1
+[Depth 0] Assignment: a =
+    Function Call: addOne
+        Argument:
+            Variable: a
+[Depth 0] Print Statement:
+    Variable: a
+[Depth 0] Function Definition: multipleParams(a, b, c, d)
+    Body:
+        [Depth 2] Return Statement:
+            Binary Operation: +
+                Left:
+                    Binary Operation: +
+                        Left:
+                            Binary Operation: +
+                                Left:
+                                    Variable: a
+                                Right:
+                                    Variable: b
+                        Right:
+                            Variable: c
+                Right:
+                    Variable: d
+[Depth 0] Print Statement:
+    Variable: a
+")]
+        [TestCase("testinputs/simpleAssignment.py", @"
+[Depth 0] Assignment: a =
+    Int Literal: 2
+[Depth 0] Assignment: b =
+    Int Literal: 3
+[Depth 0] Assignment: c =
+    Binary Operation: +
+        Left:
+            Variable: a
+        Right:
+            Variable: b
+")]
+        public void ParseAST_ValidInputFromFile_MatchesExpectedAstString(string relativePath, string expectedAst)
+        {
+            string projectDirectory = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", ".."));
+            string filePath = Path.Combine(projectDirectory, relativePath);
+
+            if (!File.Exists(filePath))
+            {
+                Assert.Fail($"File '{relativePath}' not found in directory '{projectDirectory}'");
+            }
+
+            string script = File.ReadAllText(filePath);
+
+            var lexer = new Lexer(script);
+            var tokens = lexer.Tokenize();
+            var parser = new Parser(tokens);
+            var ast = parser.Parse();
+
+            string actualAst = parser.PrintAST(ast).Trim();
+            TestContext.WriteLine(actualAst);
+
+            Assert.AreEqual(expectedAst.Trim(), actualAst, "AST did not match expected structure.");
+        }
+
     }
 }
