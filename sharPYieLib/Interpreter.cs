@@ -10,6 +10,46 @@ namespace sharPYieLib
         private readonly Dictionary<string, object> locals;
         private readonly Dictionary<string, FunctionDefinitionNode> functions = new();
 
+        private static readonly Dictionary<string, Func<List<object>, object>> builtins = new()
+        {
+            ["len"] = args => args.Count == 1
+                ? args[0] is string s ? s.Length
+                : args[0] is IEnumerable<object> e ? e.Count()
+                : throw new Exception("len() argument must be iterable")
+                : throw new Exception("len() takes exactly one argument"),
+
+            ["int"] = args => args.Count == 1 ? int.Parse(args[0].ToString()!) : throw new Exception("int() takes exactly one argument"),
+
+            ["str"] = args => args.Count == 1 ? args[0].ToString()! : throw new Exception("str() takes exactly one argument"),
+
+            ["type"] = args => args.Count == 1 ? args[0].GetType().Name.ToLower() : throw new Exception("type() takes exactly one argument"),
+
+            ["range"] = args =>
+            {
+                int start = 0, stop = 0, step = 1;
+
+                if (args.Count == 1)
+                    stop = Convert.ToInt32(args[0]);
+                else if (args.Count == 2)
+                {
+                    start = Convert.ToInt32(args[0]);
+                    stop = Convert.ToInt32(args[1]);
+                }
+                else if (args.Count == 3)
+                {
+                    start = Convert.ToInt32(args[0]);
+                    stop = Convert.ToInt32(args[1]);
+                    step = Convert.ToInt32(args[2]);
+                }
+                else throw new Exception("range() expects 1 to 3 arguments");
+
+                var result = new List<object>();
+                for (int i = start; step > 0 ? i < stop : i > stop; i += step)
+                    result.Add(i);
+                return result;
+            }
+        };
+
         public Interpreter(Dictionary<string, object>? globals = null, Dictionary<string, object>? locals = null, Dictionary<string, FunctionDefinitionNode>? functions = null)
         {
             this.globals = globals ?? new Dictionary<string, object>();
@@ -69,7 +109,14 @@ namespace sharPYieLib
             {
                 object expressionValue = EvaluateExpression(printStatementNode.Expression);
                 // Print the value
-                Console.WriteLine(expressionValue);
+                if (expressionValue is IEnumerable<object> list && expressionValue is not string)
+                {
+                    Console.WriteLine("[" + string.Join(", ", list) + "]");
+                }
+                else
+                {
+                    Console.WriteLine(expressionValue);
+                }
                 return StepResult.None();
             }
             else if (node is FunctionDefinitionNode funcNode)
@@ -112,6 +159,12 @@ namespace sharPYieLib
             }
             else if (node is FunctionCallNode callNode)
             {
+                if (builtins.TryGetValue(callNode.FunctionName, out var builtin))
+                {
+                    var evaluatedArgs = callNode.Arguments.Select(EvaluateExpression).ToList();
+                    return builtin(evaluatedArgs);
+                }
+
                 if (!functions.TryGetValue(callNode.FunctionName, out var function))
                     throw new ArgumentException($"Function '{callNode.FunctionName}' is not defined.");
 

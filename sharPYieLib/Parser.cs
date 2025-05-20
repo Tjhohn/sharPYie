@@ -79,6 +79,11 @@ namespace sharPYieLib
                 position++;
                 return null; // detent only for blocks? maybe need to handle assignmets and functions
             }
+            else if (currentToken.Type == TokenType.Comment)
+            {
+                position++;
+                return null; //literally ignore comments
+            }
             else
             {
                 throw new ParserException($"Unexpected token : type {currentToken.Type} -> '{currentToken.Value}'  - {nameof(ParseAssignmentOrStatement)}");

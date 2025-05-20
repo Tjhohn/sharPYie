@@ -44,6 +44,7 @@ namespace sharPYieTest
         [TestCase("testinputs/multipleParams.py", 470, "470")]
         [TestCase("testinputs/concatStrings.py", "weird", "qwertyweird")]
         [TestCase("testinputs/basicScope.py", 8, "10\n8")]
+        [TestCase("testinputs/builtins.py", 8, "5\n42\n99\nint32\n[0, 1, 2]")]
         public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
         {
 
