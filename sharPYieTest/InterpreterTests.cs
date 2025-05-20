@@ -43,6 +43,7 @@ namespace sharPYieTest
         [TestCase("testinputs/firstfunc.py", 2, "2\n2")] // Assume the file contains "a = 2\nb = 3\nc = a + b"
         [TestCase("testinputs/multipleParams.py", 470, "470")]
         [TestCase("testinputs/concatStrings.py", "weird", "qwertyweird")]
+        [TestCase("testinputs/basicScope.py", 8, "10\n8")]
         public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
         {
 

@@ -124,64 +124,52 @@ namespace sharPYieLib
         {
             position++; // Move past the 'def' token
 
-            Token functionNameToken = tokens[position++]; // Get the function name token
+            Token functionNameToken = tokens[position++];
             string functionName = functionNameToken.Value;
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.LeftParen)
-            {
-                throw new ParserException("Expected a left parenthesis '(' after function name");
-            }
-
-            position++; // Move past the left parenthesis
+                throw new ParserException("Expected '(' after function name");
+            position++;
 
             var parameters = new List<string>();
-
-            // Parse function parameters
             while (position < tokens.Count && tokens[position].Type != TokenType.RightParen)
             {
-                Token parameterToken = tokens[position++]; // Get the parameter token
-
+                Token parameterToken = tokens[position++];
                 if (parameterToken.Type != TokenType.Identifier)
-                {
-                    throw new ParserException($"Expected an identifier for function parameter, but found '{parameterToken.Value}'");
-                }
+                    throw new ParserException($"Expected parameter name, got '{parameterToken.Value}'");
 
                 parameters.Add(parameterToken.Value);
 
-                // Check for comma separator
-                if (position < tokens.Count && tokens[position].Type == TokenType.Comma)
-                {
-                    position++; // Move past the comma
-                }
+                if (tokens[position].Type == TokenType.Comma)
+                    position++;
             }
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
-            {
-                throw new ParserException("Expected a right parenthesis ')' after function parameters");
-            }
+                throw new ParserException("Expected ')' after function parameters");
+            position++;
 
-            position++; // Move past the right parenthesis
-
-            // Check for colon token
             if (position >= tokens.Count || tokens[position].Type != TokenType.Colon)
-            {
-                throw new ParserException("Expected a colon ':' after function parameters");
-            }
+                throw new ParserException("Expected ':' after function signature");
+            position++;
 
-            position++; // Move past the colon
+            if (position >= tokens.Count || tokens[position].Type != TokenType.Newline)
+                throw new ParserException("Expected newline after ':'");
+            position++;
 
-            // Parse function body
+            if (position >= tokens.Count || tokens[position].Type != TokenType.Indent)
+                throw new ParserException("Expected indentation for function body");
+            position++;
+
             var body = new List<AstNode>();
-
-            while (position < tokens.Count && tokens[position].Type != TokenType.Identifier)
+            while (position < tokens.Count && tokens[position].Type != TokenType.Dedent)
             {
-                
                 var bodyNode = ParseAssignmentOrStatement();
-                if ( bodyNode != null)
-                {
+                if (bodyNode != null)
                     body.Add(bodyNode);
-                }
             }
+
+            if (position < tokens.Count && tokens[position].Type == TokenType.Dedent)
+                position++;
 
             return new FunctionDefinitionNode(functionName, parameters, body);
         }

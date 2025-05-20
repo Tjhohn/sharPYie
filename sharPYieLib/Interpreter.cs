@@ -6,12 +6,15 @@ namespace sharPYieLib
 {
     public class Interpreter
     {
-        private readonly Dictionary<string, object> environment;
+        private readonly Dictionary<string, object> globals;
+        private readonly Dictionary<string, object> locals;
         private readonly Dictionary<string, FunctionDefinitionNode> functions = new();
 
-        public Interpreter(Dictionary<string, object>? env = null)
+        public Interpreter(Dictionary<string, object>? globals = null, Dictionary<string, object>? locals = null, Dictionary<string, FunctionDefinitionNode>? functions = null)
         {
-            environment = env ?? new Dictionary<string, object>();
+            this.globals = globals ?? new Dictionary<string, object>();
+            this.locals = locals ?? new Dictionary<string, object>();
+            this.functions = functions ?? new Dictionary<string, FunctionDefinitionNode>();
         }
 
         public StepResult Interpret(List<AstNode> ast)
@@ -26,14 +29,9 @@ namespace sharPYieLib
 
         public object GetVariableValue(string variableName)
         {
-            if (environment.TryGetValue(variableName, out object value))
-            {
-                return value;
-            }
-            else
-            {
-                throw new KeyNotFoundException($"Variable '{variableName}' not found in the environment.");
-            }
+            if (locals.TryGetValue(variableName, out var value)) return value;
+            if (globals.TryGetValue(variableName, out value)) return value;
+            throw new KeyNotFoundException($"Variable '{variableName}' not found in scope.");
         }
 
         private StepResult Walk(AstNode node)
@@ -42,8 +40,11 @@ namespace sharPYieLib
             {
                 // Evaluate the value assigned to the variable
                 object value = EvaluateExpression(assignmentNode.Value);
-                // Update the environment with the variable assignment
-                environment[assignmentNode.VariableName] = value;
+                // update scope
+                if (locals.ContainsKey(assignmentNode.VariableName))
+                    locals[assignmentNode.VariableName] = value;
+                else
+                    globals[assignmentNode.VariableName] = value;
                 return StepResult.None();
             }
             else if (node is IfStatementNode ifStatementNode)
@@ -107,15 +108,7 @@ namespace sharPYieLib
             }
             else if (node is VariableNode variableNode)
             {
-                // Look up the value of the variable in the environment
-                if (environment.TryGetValue(variableNode.Name, out object value))
-                {
-                    return value;
-                }
-                else
-                {
-                    throw new ArgumentException($"Variable '{variableNode.Name}' is not defined.");
-                }
+                return GetVariableValue(variableNode.Name);
             }
             else if (node is FunctionCallNode callNode)
             {
@@ -125,14 +118,16 @@ namespace sharPYieLib
                 if (function.Parameters.Count != callNode.Arguments.Count)
                     throw new ArgumentException($"Function '{callNode.FunctionName}' expects {function.Parameters.Count} arguments but got {callNode.Arguments.Count}.");
 
-                var localInterpreter = new Interpreter();
+
+                var localScope = new Dictionary<string, object>();
                 for (int i = 0; i < function.Parameters.Count; i++)
                 {
                     var argValue = EvaluateExpression(callNode.Arguments[i]);
-                    localInterpreter.environment[function.Parameters[i]] = argValue;
+                    localScope[function.Parameters[i]] = argValue;
                 }
 
-                var result = localInterpreter.Interpret(function.Body);
+                var functionInterpreter = new Interpreter(globals, localScope, functions);
+                var result = functionInterpreter.Interpret(function.Body);
                 return result.HasReturned ? result.ReturnValue : null;
             }
             else
