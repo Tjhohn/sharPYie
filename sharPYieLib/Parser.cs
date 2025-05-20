@@ -252,9 +252,23 @@ namespace sharPYieLib
                 {
                     // Move past the left parenthesis
                     position++;
+                    var args = new List<AstNode>(); // list of params
 
-                    // Parse the expression inside the function call
-                    AstNode argument = ParseExpression();
+                    // get list of args if exist
+                    if (tokens[position].Type != TokenType.RightParen)
+                    {
+                        while (true)
+                        {
+                            args.Add(ParseExpression());
+
+                            if (tokens[position].Type == TokenType.Comma)
+                            {
+                                position++; // Skip ','
+                                continue;
+                            }
+                            break;
+                        }
+                    }
 
                     // Check if the next token is a right parenthesis
                     if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
@@ -266,7 +280,7 @@ namespace sharPYieLib
                     position++;
 
                     // Return a function call node
-                    return new FunctionCallNode(currentToken.Value, argument);
+                    return new FunctionCallNode(currentToken.Value, args);
                 }
                 else
                 {
@@ -434,8 +448,11 @@ namespace sharPYieLib
 
                 case FunctionCallNode callNode:
                     stringBuilder.AppendLine($"{GetIndent(depth)}Function Call: {callNode.FunctionName}");
-                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Argument:");
-                    PrintExpression(callNode.Argument, stringBuilder, depth + 2);
+                    stringBuilder.AppendLine($"{GetIndent(depth + 1)}Arguments:");
+                    foreach (var arg in callNode.Arguments)
+                    {
+                        PrintExpression(arg, stringBuilder, depth + 2);
+                    }
                     break;
 
                 default:
@@ -443,8 +460,6 @@ namespace sharPYieLib
                     break;
             }
         }
-
-
 
 
         private string GetValueAsString(AstNode node)
@@ -469,7 +484,11 @@ namespace sharPYieLib
             }
             else if (node is FunctionCallNode callNode)
             {
-                return $"({callNode.FunctionName} args : {GetValueAsString(callNode.Argument)} )";
+                var argStrings = callNode.Arguments
+                    .Select(arg => GetValueAsString(arg))
+                    .ToList();
+                string argsJoined = string.Join(", ", argStrings);
+                return $"{callNode.FunctionName}({argsJoined})";
             }
             else
             {
@@ -566,12 +585,12 @@ namespace sharPYieLib
     public class FunctionCallNode : AstNode
     {
         public string FunctionName { get; }
-        public AstNode Argument { get; }
+        public List<AstNode> Arguments { get; }
 
-        public FunctionCallNode(string functionName, AstNode argument)
+        public FunctionCallNode(string functionName, List<AstNode> arguments)
         {
             FunctionName = functionName;
-            Argument = argument;
+            Arguments = arguments;
         }
     }
 

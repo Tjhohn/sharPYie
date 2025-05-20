@@ -225,7 +225,7 @@ namespace sharPYieTest
                     Int Literal: 1
 [Depth 0] Assignment: a =
     Function Call: addOne
-        Argument:
+        Arguments:
             Variable: a
 [Depth 0] Print Statement:
     Variable: a

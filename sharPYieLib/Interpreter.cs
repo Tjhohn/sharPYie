@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static sharPYieLib.Interpreter;
 
 namespace sharPYieLib
 {
@@ -13,12 +14,14 @@ namespace sharPYieLib
             environment = env ?? new Dictionary<string, object>();
         }
 
-        public void Interpret(List<AstNode> ast)
+        public StepResult Interpret(List<AstNode> ast)
         {
             foreach (var node in ast)
             {
-                Walk(node);
+                var result = Walk(node);
+                if (result.HasReturned) return result;
             }
+            return StepResult.None();
         }
 
         public object GetVariableValue(string variableName)
@@ -33,7 +36,7 @@ namespace sharPYieLib
             }
         }
 
-        private void Walk(AstNode node)
+        private StepResult Walk(AstNode node)
         {
             if (node is AssignmentNode assignmentNode)
             {
@@ -41,6 +44,7 @@ namespace sharPYieLib
                 object value = EvaluateExpression(assignmentNode.Value);
                 // Update the environment with the variable assignment
                 environment[assignmentNode.VariableName] = value;
+                return StepResult.None();
             }
             else if (node is IfStatementNode ifStatementNode)
             {
@@ -51,25 +55,31 @@ namespace sharPYieLib
                     // Execute the body of the if statement
                     foreach (var statement in ifStatementNode.Body)
                     {
-                        Walk(statement);
+                        var result = Walk(statement);
+                        if (result.HasReturned)
+                        {
+                            return result;
+                        }
                     }
                 }
+                return StepResult.None();
             }
             else if (node is PrintStatementNode printStatementNode)
             {
-                // Evaluate the expression to print
                 object expressionValue = EvaluateExpression(printStatementNode.Expression);
                 // Print the value
                 Console.WriteLine(expressionValue);
+                return StepResult.None();
             }
             else if (node is FunctionDefinitionNode funcNode)
             {
                 functions[funcNode.FunctionName] = funcNode;
+                return StepResult.None();
             }
             else if (node is ReturnStatementNode returnNode)
             {
                 object value = EvaluateExpression(returnNode.ReturnValue);
-                throw new ReturnSignal(value);
+                return StepResult.Return(value);
             }
             else
             {
@@ -91,8 +101,8 @@ namespace sharPYieLib
             }
             else if (node is BinaryOperationNode binaryOperationNode)
             {
-                int leftValue = (int)EvaluateExpression(binaryOperationNode.Left);
-                int rightValue = (int)EvaluateExpression(binaryOperationNode.Right);
+                object leftValue = EvaluateExpression(binaryOperationNode.Left);
+                object rightValue = EvaluateExpression(binaryOperationNode.Right);
                 return EvaluateBinaryOperation(leftValue, binaryOperationNode.Operator, rightValue);
             }
             else if (node is VariableNode variableNode)
@@ -112,25 +122,18 @@ namespace sharPYieLib
                 if (!functions.TryGetValue(callNode.FunctionName, out var function))
                     throw new ArgumentException($"Function '{callNode.FunctionName}' is not defined.");
 
-                var argValue = EvaluateExpression(callNode.Argument);
+                if (function.Parameters.Count != callNode.Arguments.Count)
+                    throw new ArgumentException($"Function '{callNode.FunctionName}' expects {function.Parameters.Count} arguments but got {callNode.Arguments.Count}.");
 
                 var localInterpreter = new Interpreter();
-
-                if (function.Parameters.Count != 1)
-                    throw new NotImplementedException("Only single-argument functions are supported for now.");
-
-                localInterpreter.environment[function.Parameters[0]] = argValue;
-
-                try
+                for (int i = 0; i < function.Parameters.Count; i++)
                 {
-                    localInterpreter.Interpret(function.Body);
-                }
-                catch (ReturnSignal signal)
-                {
-                    return signal.Value;
+                    var argValue = EvaluateExpression(callNode.Arguments[i]);
+                    localInterpreter.environment[function.Parameters[i]] = argValue;
                 }
 
-                return null;
+                var result = localInterpreter.Interpret(function.Body);
+                return result.HasReturned ? result.ReturnValue : null;
             }
             else
             {
@@ -138,35 +141,45 @@ namespace sharPYieLib
             }
         }
 
-        private int EvaluateBinaryOperation(int left, string op, int right)
+        private object EvaluateBinaryOperation(object left, string op, object right)
         {
-            switch (op)
+            if (left is int lInt && right is int rInt)
             {
-                case "+":
-                    return left + right;
-                case "-":
-                    return left - right;
-                case "*":
-                    return left * right;
-                case "/":
-                    if (right == 0)
-                        throw new DivideByZeroException();
-                    return left / right;
-                case "==":
-                    return left == right ? 1 : 0;
-                default:
-                    throw new ArgumentException($"Unsupported operator: {op}");
+                return op switch
+                {
+                    "+" => lInt + rInt,
+                    "-" => lInt - rInt,
+                    "*" => lInt * rInt,
+                    "/" => rInt == 0 ? throw new DivideByZeroException() : lInt / rInt,
+                    "==" => lInt == rInt ? 1 : 0,
+                    _ => throw new ArgumentException($"Unsupported operator for integers: {op}")
+                };
+            }
+            else if (left is string lStr && right is string rStr)
+            {
+                if (op == "+") return lStr + rStr;
+                if (op == "==") return lStr == rStr ? 1 : 0;
+                throw new ArgumentException($"Unsupported string operator: {op}");
+            }
+            else
+            {
+                throw new ArgumentException($"Type mismatch or unsupported operand types for '{op}': {left.GetType().Name}, {right.GetType().Name}");
             }
         }
 
-        private class ReturnSignal : Exception
+        public class StepResult
         {
-            public object Value { get; }
+            public bool HasReturned { get; }
+            public object? ReturnValue { get; }
 
-            public ReturnSignal(object value)
+            private StepResult(bool hasReturned, object? value)
             {
-                Value = value;
+                HasReturned = hasReturned;
+                ReturnValue = value;
             }
+
+            public static StepResult None() => new StepResult(false, null);
+            public static StepResult Return(object value) => new StepResult(true, value);
         }
     }
 }
