@@ -103,12 +103,22 @@ namespace sharPYieLib
 
         private AstNode ParseAssignment()
         {
+            int startPos = position;
             Token currentToken = tokens[position++]; // Move to the next token
 
             if (currentToken.Type != TokenType.Identifier)
             {
                 throw new ParserException($"Expected an identifier, but found '{currentToken.Value}'", tokens[position]);
             }
+
+            // Check if this identifier is followed by a dot (attribute access) → not an assignment target
+            if (position < tokens.Count && tokens[position].Type == TokenType.Dot)
+            {
+                // Roll back and treat this as a general expression statement
+                position = startPos;
+                return ParseExpression();
+            }
+
 
             string variableName = currentToken.Value;
 
@@ -301,17 +311,19 @@ namespace sharPYieLib
                 throw new ParserException("Unexpected end of input in expression");
 
             Token currentToken = tokens[position++];
+            AstNode baseNode;
 
             if (currentToken.Type == TokenType.Integer)
             {
-                return new IntLiteralNode(int.Parse(currentToken.Value));
+                baseNode = new IntLiteralNode(int.Parse(currentToken.Value));
             }
             else if (currentToken.Type == TokenType.StringLiteral)
             {
-                return new StringLiteralNode(currentToken.Value);
+                baseNode = new StringLiteralNode(currentToken.Value);
             }
             else if (currentToken.Type == TokenType.Identifier)
             {
+                baseNode = new VariableNode(currentToken.Value);
                 if (position < tokens.Count && tokens[position].Type == TokenType.LeftParen)
                 {
                     position++; // skip '('
@@ -328,22 +340,76 @@ namespace sharPYieLib
                     if (tokens[position].Type != TokenType.RightParen)
                         throw new ParserException("Expected ')' after function call arguments", tokens[position]);
                     position++; // skip ')'
-                    return new FunctionCallNode(currentToken.Value, args);
+                    baseNode = new FunctionCallNode(currentToken.Value, args);
                 }
-                return new VariableNode(currentToken.Value);
             }
             else if (currentToken.Type == TokenType.LeftParen)
             {
-                AstNode expr = ParseExpression();
+                baseNode = ParseExpression();
                 if (tokens[position].Type != TokenType.RightParen)
                     throw new ParserException("Expected ')' after expression", tokens[position]);
                 position++;
-                return expr;
+            }
+            else if (currentToken.Type == TokenType.LeftBracket)
+            {
+                var elements = new List<AstNode>();
+
+                if (tokens[position].Type != TokenType.RightBracket)
+                {
+                    while (true)
+                    {
+                        elements.Add(ParseExpression());
+                        if (tokens[position].Type == TokenType.Comma)
+                        {
+                            position++;
+                            continue;
+                        }
+                        break;
+                    }
+                }
+
+                if (tokens[position].Type != TokenType.RightBracket)
+                    throw new ParserException("Expected ']' to close list literal", tokens[position]);
+                position++;
+
+                baseNode = new ListLiteralNode(elements);
             }
             else
             {
                 throw new ParserException($"Unexpected token '{currentToken.Value}' in ParseAtom", currentToken);
             }
+
+            // Handle chained function calls like list.append(...)
+            while (position < tokens.Count && tokens[position].Type == TokenType.Dot)
+            {
+                position++; // skip dot
+                if (tokens[position].Type != TokenType.Identifier)
+                    throw new ParserException("Expected method name after '.'", tokens[position]);
+                string methodName = tokens[position++].Value;
+
+                if (tokens[position].Type != TokenType.LeftParen)
+                    throw new ParserException("Expected '(' after method name", tokens[position]);
+                position++;
+
+                var args = new List<AstNode> { baseNode }; // Pass the baseNode as the first arg
+                if (tokens[position].Type != TokenType.RightParen)
+                {
+                    while (true)
+                    {
+                        args.Add(ParseExpression());
+                        if (tokens[position].Type == TokenType.Comma) position++;
+                        else break;
+                    }
+                }
+
+                if (tokens[position].Type != TokenType.RightParen)
+                    throw new ParserException("Expected ')' after method arguments", tokens[position]);
+                position++;
+
+                baseNode = new FunctionCallNode(methodName, args);
+            }
+
+            return baseNode;
         }
 
         private AstNode ParseValue()
@@ -696,6 +762,16 @@ namespace sharPYieLib
         public ReturnStatementNode(AstNode returnValue)
         {
             ReturnValue = returnValue;
+        }
+    }
+
+    public class ListLiteralNode : AstNode
+    {
+        public List<AstNode> Elements { get; }
+
+        public ListLiteralNode(List<AstNode> elements)
+        {
+            Elements = elements;
         }
     }
 }

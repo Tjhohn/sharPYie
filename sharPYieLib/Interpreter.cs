@@ -50,6 +50,29 @@ namespace sharPYieLib
             }
         };
 
+        private static readonly Dictionary<string, Func<List<object>, object>> listBuiltins = new()
+        {
+            ["append"] = args =>
+            {
+                if (args.Count != 2 || args[0] is not List<object> list)
+                    throw new Exception("append expects a list and a value");
+                list.Add(args[1]);
+                return null!;
+            },
+
+            ["pop"] = args =>
+            {
+                if (args.Count != 1 || args[0] is not List<object> list)
+                    throw new Exception("pop expects a list");
+                if (list.Count == 0)
+                    throw new Exception("pop from empty list");
+                var last = list[^1];
+                list.RemoveAt(list.Count - 1);
+                return last;
+            }
+            // Add more as needed: insert, remove, clear, index...
+        };
+
         public Interpreter(Dictionary<string, object>? globals = null, Dictionary<string, object>? locals = null, Dictionary<string, FunctionDefinitionNode>? functions = null)
         {
             this.globals = globals ?? new Dictionary<string, object>();
@@ -129,6 +152,11 @@ namespace sharPYieLib
                 object value = EvaluateExpression(returnNode.ReturnValue);
                 return StepResult.Return(value);
             }
+            else if (node is FunctionCallNode callNode)
+            {
+                EvaluateExpression(callNode); // Execute for side effects, discard result
+                return StepResult.None();
+            }
             else
             {
                 throw new ArgumentException($"Unsupported node type: {node.GetType().Name}");
@@ -162,12 +190,25 @@ namespace sharPYieLib
             {
                 return GetVariableValue(variableNode.Name);
             }
+            else if (node is ListLiteralNode listNode)
+            {
+                return listNode.Elements.Select(EvaluateExpression).ToList();
+            }
             else if (node is FunctionCallNode callNode)
             {
                 if (builtins.TryGetValue(callNode.FunctionName, out var builtin))
                 {
                     var evaluatedArgs = callNode.Arguments.Select(EvaluateExpression).ToList();
                     return builtin(evaluatedArgs);
+                }
+
+                // Check for list methods
+                if (callNode.Arguments.Count > 0 &&
+                    EvaluateExpression(callNode.Arguments[0]) is List<object> &&
+                    listBuiltins.TryGetValue(callNode.FunctionName, out var listBuiltin))
+                {
+                    var evaluatedArgs = callNode.Arguments.Select(EvaluateExpression).ToList();
+                    return listBuiltin(evaluatedArgs);
                 }
 
                 if (!functions.TryGetValue(callNode.FunctionName, out var function))

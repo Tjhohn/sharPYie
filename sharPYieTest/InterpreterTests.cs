@@ -48,6 +48,7 @@ namespace sharPYieTest
         [TestCase("testinputs/recursiveFactorial.py", 120, "120")]
         [TestCase("testinputs/sample_110.py", 120, "120")]
         [TestCase("testinputs/multipleCheckIf.py", 1, "-1\n0")]
+        [TestCase("testinputs/listsBasics.py", new int[] { 1, 0, 1, 0 }, "[1, 0, 1, 0]")]
         public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
         {
 
