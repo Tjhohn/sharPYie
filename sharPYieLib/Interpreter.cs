@@ -153,6 +153,11 @@ namespace sharPYieLib
                 object rightValue = EvaluateExpression(binaryOperationNode.Right);
                 return EvaluateBinaryOperation(leftValue, binaryOperationNode.Operator, rightValue);
             }
+            else if (node is UnaryOperationNode unaryOpNode)
+            {
+                var operand = EvaluateExpression(unaryOpNode.Operand);
+                return EvaluateUnaryOperation(unaryOpNode.Operator, operand);
+            }
             else if (node is VariableNode variableNode)
             {
                 return GetVariableValue(variableNode.Name);
@@ -200,19 +205,43 @@ namespace sharPYieLib
                     "*" => lInt * rInt,
                     "/" => rInt == 0 ? throw new DivideByZeroException() : lInt / rInt,
                     "==" => lInt == rInt ? 1 : 0,
+                    "!=" => lInt != rInt ? 1 : 0,
+                    "<" => lInt < rInt ? 1 : 0,
+                    "<=" => lInt <= rInt ? 1 : 0,
+                    ">" => lInt > rInt ? 1 : 0,
+                    ">=" => lInt >= rInt ? 1 : 0,
+                    "and" => (lInt != 0 && rInt != 0) ? 1 : 0,
+                    "or" => (lInt != 0 || rInt != 0) ? 1 : 0,
                     _ => throw new ArgumentException($"Unsupported operator for integers: {op}")
                 };
             }
             else if (left is string lStr && right is string rStr)
             {
-                if (op == "+") return lStr + rStr;
-                if (op == "==") return lStr == rStr ? 1 : 0;
-                throw new ArgumentException($"Unsupported string operator: {op}");
+                return op switch
+                {
+                    "+" => lStr + rStr,
+                    "==" => lStr == rStr ? 1 : 0,
+                    "!=" => lStr != rStr ? 1 : 0,
+                    _ => throw new ArgumentException($"Unsupported string operator: {op}")
+                };
             }
-            else
+
+            throw new ArgumentException($"Type mismatch or unsupported operand types for '{op}': {left.GetType().Name}, {right.GetType().Name}");
+        }
+
+        private object EvaluateUnaryOperation(string op, object operand)
+        {
+            if (operand is int intVal)
             {
-                throw new ArgumentException($"Type mismatch or unsupported operand types for '{op}': {left.GetType().Name}, {right.GetType().Name}");
+                return op switch
+                {
+                    "-" => -intVal,
+                    "not" => intVal == 0 ? 1 : 0,
+                    _ => throw new ArgumentException($"Unsupported unary operator: {op}")
+                };
             }
+
+            throw new ArgumentException($"Unsupported operand type for unary '{op}': {operand.GetType().Name}");
         }
 
         public class StepResult

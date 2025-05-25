@@ -47,6 +47,7 @@ namespace sharPYieTest
         [TestCase("testinputs/builtins.py", 8, "5\n42\n99\nint32\n[0, 1, 2]")] //technically should return int not "int32" but I dont super care rn
         [TestCase("testinputs/recursiveFactorial.py", 120, "120")]
         [TestCase("testinputs/sample_110.py", 120, "120")]
+        [TestCase("testinputs/multipleCheckIf.py", 1, "-1\n0")]
         public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
         {
 
@@ -62,14 +63,14 @@ namespace sharPYieTest
 
             var lexer = new Lexer(script);
             var tokens = lexer.Tokenize();
+            // lexer.PrintTokensByType(tokens);
             var parser = new Parser(tokens);
             var ast = parser.Parse();
+            TestContext.WriteLine("#########################");
+            TestContext.WriteLine(parser.PrintAST(ast));
             var interpreter = new Interpreter();
-            //TestContext.WriteLine(tokens);
-            //TestContext.WriteLine("#########################");
-            //TestContext.WriteLine(parser.PrintAST(ast));
-
-
+            
+            
             using (StringWriter sw = new StringWriter())
             {
                 Console.SetOut(sw);

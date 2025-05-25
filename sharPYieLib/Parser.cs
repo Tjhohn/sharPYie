@@ -186,49 +186,83 @@ namespace sharPYieLib
 
         private AstNode ParseExpression()
         {
-            AstNode left = ParseTerm(); // Parse the left side of the expression
+            return ParseOr();
+        }
 
-            // Loop to handle comparison operations
+        private AstNode ParseOr()
+        {
+            AstNode left = ParseAnd();
+            while (position < tokens.Count && tokens[position].Type == TokenType.Or)
+            {
+                string op = tokens[position++].Value;
+                AstNode right = ParseAnd();
+                left = new BinaryOperationNode(left, op, right);
+            }
+            return left;
+        }
+
+        private AstNode ParseAnd()
+        {
+            AstNode left = ParseNot();
+            while (position < tokens.Count && tokens[position].Type == TokenType.And)
+            {
+                string op = tokens[position++].Value;
+                AstNode right = ParseNot();
+                left = new BinaryOperationNode(left, op, right);
+            }
+            return left;
+        }
+
+        private AstNode ParseNot()
+        {
+            if (position < tokens.Count && tokens[position].Type == TokenType.Not)
+            {
+                string op = tokens[position++].Value;
+                AstNode right = ParseNot();
+                return new UnaryOperationNode(op, right);
+            }
+            return ParseEquality();
+        }
+
+        private AstNode ParseEquality()
+        {
+            AstNode left = ParseComparison();
             while (position < tokens.Count && tokens[position].Type == TokenType.Equal)
             {
-                Token operatorToken = tokens[position++]; // Move to the next token (operator)
-
-                // Parse the right side of the expression
-                AstNode right = ParseTerm();
-
-                // Create a BinaryOperationNode with the parsed left, operator, and right values
-                left = new BinaryOperationNode(left, operatorToken.Value, right);
+                string op = tokens[position++].Value;
+                AstNode right = ParseComparison();
+                left = new BinaryOperationNode(left, op, right);
             }
+            return left;
+        }
 
-            // Loop to handle binary operations (addition and subtraction)
-            while (position < tokens.Count && (tokens[position].Type == TokenType.Plus || tokens[position].Type == TokenType.Minus))
+        private AstNode ParseComparison()
+        {
+            AstNode left = ParseTerm();
+            while (position < tokens.Count &&
+                   (tokens[position].Type == TokenType.Less ||
+                    tokens[position].Type == TokenType.Greater ||
+                    tokens[position].Type == TokenType.LessEqual ||
+                    tokens[position].Type == TokenType.GreaterEqual ||
+                    tokens[position].Type == TokenType.NotEqual))
             {
-                Token operatorToken = tokens[position++]; // Move to the next token (operator)
-
-                // Parse the right side of the expression
+                string op = tokens[position++].Value;
                 AstNode right = ParseTerm();
-
-                // Create a BinaryOperationNode with the parsed left, operator, and right values
-                left = new BinaryOperationNode(left, operatorToken.Value, right);
+                left = new BinaryOperationNode(left, op, right);
             }
-
             return left;
         }
 
         private AstNode ParseTerm()
         {
-            AstNode left = ParseFactor(); // Parse the left side of the term
+            AstNode left = ParseFactor();
 
-            // Loop to handle multiplication and division operations
-            while (position < tokens.Count && (tokens[position].Type == TokenType.Multiply || tokens[position].Type == TokenType.Divide))
+            while (position < tokens.Count &&
+                   (tokens[position].Type == TokenType.Plus || tokens[position].Type == TokenType.Minus))
             {
-                Token operatorToken = tokens[position++]; // Move to the next token (operator)
-
-                // Parse the right side of the term
+                string op = tokens[position++].Value;
                 AstNode right = ParseFactor();
-
-                // Create a BinaryOperationNode with the parsed left, operator, and right values
-                left = new BinaryOperationNode(left, operatorToken.Value, right);
+                left = new BinaryOperationNode(left, op, right);
             }
 
             return left;
@@ -236,78 +270,79 @@ namespace sharPYieLib
 
         private AstNode ParseFactor()
         {
-            Token currentToken = tokens[position++]; // Move to the next token
+            AstNode left = ParseUnary();
+
+            while (position < tokens.Count &&
+                   (tokens[position].Type == TokenType.Multiply || tokens[position].Type == TokenType.Divide))
+            {
+                string op = tokens[position++].Value;
+                AstNode right = ParseUnary();
+                left = new BinaryOperationNode(left, op, right);
+            }
+
+            return left;
+        }
+
+        private AstNode ParseUnary()
+        {
+            if (position < tokens.Count && tokens[position].Type == TokenType.Minus)
+            {
+                string op = tokens[position++].Value;
+                AstNode right = ParseUnary();
+                return new UnaryOperationNode(op, right);
+            }
+
+            return ParseAtom();
+        }
+
+        private AstNode ParseAtom()
+        {
+            if (position >= tokens.Count)
+                throw new ParserException("Unexpected end of input in expression");
+
+            Token currentToken = tokens[position++];
 
             if (currentToken.Type == TokenType.Integer)
             {
-                return new IntLiteralNode(int.Parse(currentToken.Value)); // Construct IntLiteralNode
+                return new IntLiteralNode(int.Parse(currentToken.Value));
+            }
+            else if (currentToken.Type == TokenType.StringLiteral)
+            {
+                return new StringLiteralNode(currentToken.Value);
             }
             else if (currentToken.Type == TokenType.Identifier)
             {
-                // Check if the identifier is a function call
                 if (position < tokens.Count && tokens[position].Type == TokenType.LeftParen)
                 {
-                    // Move past the left parenthesis
-                    position++;
-                    var args = new List<AstNode>(); // list of params
-
-                    // get list of args if exist
+                    position++; // skip '('
+                    var args = new List<AstNode>();
                     if (tokens[position].Type != TokenType.RightParen)
                     {
                         while (true)
                         {
                             args.Add(ParseExpression());
-
-                            if (tokens[position].Type == TokenType.Comma)
-                            {
-                                position++; // Skip ','
-                                continue;
-                            }
-                            break;
+                            if (tokens[position].Type == TokenType.Comma) position++;
+                            else break;
                         }
                     }
-
-                    // Check if the next token is a right parenthesis
-                    if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
-                    {
-                        throw new ParserException("Expected a right parenthesis ')' after function call", tokens[position]);
-                    }
-
-                    // Move past the right parenthesis
-                    position++;
-
-                    // Return a function call node
+                    if (tokens[position].Type != TokenType.RightParen)
+                        throw new ParserException("Expected ')' after function call arguments", tokens[position]);
+                    position++; // skip ')'
                     return new FunctionCallNode(currentToken.Value, args);
                 }
-                else
-                {
-                    return new VariableNode(currentToken.Value); // Construct VariableNode
-                }
-            }
-            else if (currentToken.Type == TokenType.StringLiteral)
-            {
-                // Construct StringLiteralNode
-                return new StringLiteralNode(currentToken.Value);
+                return new VariableNode(currentToken.Value);
             }
             else if (currentToken.Type == TokenType.LeftParen)
             {
-                // Parse the expression inside the parentheses
-                AstNode expression = ParseExpression();
-
-                // Check if the next token is a right parenthesis
-                if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
-                {
-                    throw new ParserException("Expected a right parenthesis ')' after '('", tokens[position]);
-                }
-
-                // Move past the right parenthesis
+                AstNode expr = ParseExpression();
+                if (tokens[position].Type != TokenType.RightParen)
+                    throw new ParserException("Expected ')' after expression", tokens[position]);
                 position++;
-
-                return expression;
+                return expr;
             }
             else
             {
-                throw new ParserException($"Unexpected token '{currentToken.Value}' - {nameof(ParseFactor)}", tokens[position]);
+                throw new ParserException($"Unexpected token '{currentToken.Value}' in ParseAtom", currentToken);
             }
         }
 
@@ -580,6 +615,18 @@ namespace sharPYieLib
             Left = left;
             Operator = op;
             Right = right;
+        }
+    }
+
+    public class UnaryOperationNode : AstNode
+    {
+        public string Operator { get; }
+        public AstNode Operand { get; }
+
+        public UnaryOperationNode(string op, AstNode operand)
+        {
+            Operator = op;
+            Operand = operand;
         }
     }
 
