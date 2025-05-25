@@ -63,6 +63,7 @@ namespace sharPYieTest
             var tokens = lexer.Tokenize();
             var parser = new Parser(tokens);
             var ast = parser.Parse();
+            TestContext.WriteLine(parser.PrintAST(ast));
 
             int index = 0;
             foreach (var node in ast)
@@ -92,8 +93,11 @@ namespace sharPYieTest
                     Assert.AreEqual(expectedNodes[index++], GetValueAsString(ifStatementNode.Condition)); // Check the condition
                     foreach (var bodyNode in ifStatementNode.Body)
                     {
-                        // You may need to implement additional checks here depending on your requirements
-                        // For example, check for PrintStatementNode within the body
+                        if (bodyNode is PrintStatementNode printStatementNode)
+                        {
+                            Assert.AreEqual("print", expectedNodes[index++]); // Check if it's a print statement
+                            Assert.AreEqual(expectedNodes[index++], GetValueAsString(printStatementNode.Expression)); // Check the expression to be printed
+                        }
                     }
                 }
                 else if (node is PrintStatementNode printStatementNode)
@@ -168,6 +172,11 @@ namespace sharPYieTest
                         {
                             Assert.AreEqual("print", expectedNodes[index++]); // Check if it's a print statement
                             Assert.AreEqual(expectedNodes[index++], GetValueAsString(printNode.Expression)); // Check the expression to be printed
+                        }
+                       else if (bodyNode is AssignmentNode assNode)
+                        {
+                            Assert.AreEqual(assNode.VariableName, expectedNodes[index++]); // Check if it's a print statement
+                            Assert.AreEqual(expectedNodes[index++], GetValueAsString(assNode.Value)); // Check the expression to be printed
                         }
                         else
                         {

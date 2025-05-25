@@ -72,12 +72,13 @@ namespace sharPYieLib
             else if (currentToken.Type == TokenType.Indent)
             {
                 position++;
-                return null; // I think indent should be only really for making proper "blocks"
+                return null; // I think indent should be only really for making proper "blocks" maybe need to remove like dedent?
             }
             else if (currentToken.Type == TokenType.Dedent)
             {
-                position++;
-                return null; // detent only for blocks? maybe need to handle assignmets and functions
+                throw new ParserException("Unexpected DEDENT at top-level");
+                //position++;
+                //return null; // detent only for blocks? maybe need to handle assignmets and functions
             }
             else if (currentToken.Type == TokenType.Comment)
             {
@@ -174,7 +175,10 @@ namespace sharPYieLib
             }
 
             if (position < tokens.Count && tokens[position].Type == TokenType.Dedent)
+            {
                 position++;
+            }
+                
 
             return new FunctionDefinitionNode(functionName, parameters, body);
         }
@@ -335,12 +339,17 @@ namespace sharPYieLib
             {
                 throw new ParserException("Expected a colon after 'if' condition");
             }
-
             position++; // Move past the colon
+            if (tokens[position].Type != TokenType.Newline)
+                throw new ParserException("Expected newline after ':' in if");
+            position++;
+            if (position >= tokens.Count || tokens[position].Type != TokenType.Indent)
+                throw new ParserException("Expected INDENT to begin 'if' body");
+            position++;
 
             var body = new List<AstNode>();
 
-            while (position < tokens.Count && tokens[position].Type != TokenType.Identifier)
+            while (position < tokens.Count && tokens[position].Type != TokenType.Dedent)
             {
                 var node = ParseAssignmentOrStatement();
                 if (node != null)
@@ -348,6 +357,9 @@ namespace sharPYieLib
                     body.Add(node);
                 } 
             }
+
+            if (tokens[position].Type == TokenType.Dedent)
+                position++; // consume the dedent
 
             return new IfStatementNode(condition, body);
         }
