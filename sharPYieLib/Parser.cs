@@ -76,7 +76,7 @@ namespace sharPYieLib
             }
             else if (currentToken.Type == TokenType.Dedent)
             {
-                throw new ParserException("Unexpected DEDENT at top-level");
+                throw new ParserException("Unexpected DEDENT at top-level", tokens[position]);
                 //position++;
                 //return null; // detent only for blocks? maybe need to handle assignmets and functions
             }
@@ -87,7 +87,7 @@ namespace sharPYieLib
             }
             else
             {
-                throw new ParserException($"Unexpected token : type {currentToken.Type} -> '{currentToken.Value}'  - {nameof(ParseAssignmentOrStatement)}");
+                throw new ParserException($"Unexpected token : type {currentToken.Type} -> '{currentToken.Value}'  - {nameof(ParseAssignmentOrStatement)}", tokens[position]);
             }
         }
 
@@ -107,14 +107,14 @@ namespace sharPYieLib
 
             if (currentToken.Type != TokenType.Identifier)
             {
-                throw new ParserException($"Expected an identifier, but found '{currentToken.Value}'");
+                throw new ParserException($"Expected an identifier, but found '{currentToken.Value}'", tokens[position]);
             }
 
             string variableName = currentToken.Value;
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.Assign)
             {
-                throw new ParserException("Expected an assignment operator '='");
+                throw new ParserException("Expected an assignment operator '='", tokens[position]);
             }
 
             // Skip the assignment operator
@@ -134,7 +134,7 @@ namespace sharPYieLib
             string functionName = functionNameToken.Value;
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.LeftParen)
-                throw new ParserException("Expected '(' after function name");
+                throw new ParserException("Expected '(' after function name", tokens[position]);
             position++;
 
             var parameters = new List<string>();
@@ -142,7 +142,7 @@ namespace sharPYieLib
             {
                 Token parameterToken = tokens[position++];
                 if (parameterToken.Type != TokenType.Identifier)
-                    throw new ParserException($"Expected parameter name, got '{parameterToken.Value}'");
+                    throw new ParserException($"Expected parameter name, got '{parameterToken.Value}'", tokens[position]);
 
                 parameters.Add(parameterToken.Value);
 
@@ -151,19 +151,19 @@ namespace sharPYieLib
             }
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
-                throw new ParserException("Expected ')' after function parameters");
+                throw new ParserException("Expected ')' after function parameters", tokens[position]);
             position++;
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.Colon)
-                throw new ParserException("Expected ':' after function signature");
+                throw new ParserException("Expected ':' after function signature", tokens[position]);
             position++;
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.Newline)
-                throw new ParserException("Expected newline after ':'");
+                throw new ParserException("Expected newline after ':'", tokens[position]);
             position++;
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.Indent)
-                throw new ParserException("Expected indentation for function body");
+                throw new ParserException("Expected indentation for function body", tokens[position]);
             position++;
 
             var body = new List<AstNode>();
@@ -270,7 +270,7 @@ namespace sharPYieLib
                     // Check if the next token is a right parenthesis
                     if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
                     {
-                        throw new ParserException("Expected a right parenthesis ')' after function call");
+                        throw new ParserException("Expected a right parenthesis ')' after function call", tokens[position]);
                     }
 
                     // Move past the right parenthesis
@@ -297,7 +297,7 @@ namespace sharPYieLib
                 // Check if the next token is a right parenthesis
                 if (position >= tokens.Count || tokens[position].Type != TokenType.RightParen)
                 {
-                    throw new ParserException("Expected a right parenthesis ')' after '('");
+                    throw new ParserException("Expected a right parenthesis ')' after '('", tokens[position]);
                 }
 
                 // Move past the right parenthesis
@@ -307,7 +307,7 @@ namespace sharPYieLib
             }
             else
             {
-                throw new ParserException($"Unexpected token '{currentToken.Value}' - {nameof(ParseFactor)}");
+                throw new ParserException($"Unexpected token '{currentToken.Value}' - {nameof(ParseFactor)}", tokens[position]);
             }
         }
 
@@ -325,7 +325,7 @@ namespace sharPYieLib
             }
             else
             {
-                throw new ParserException($"Unexpected token '{currentToken.Value}'  - {nameof(ParseValue)}");
+                throw new ParserException($"Unexpected token '{currentToken.Value}'  - {nameof(ParseValue)}", tokens[position]);
             }
         }
 
@@ -337,14 +337,14 @@ namespace sharPYieLib
 
             if (position >= tokens.Count || tokens[position].Type != TokenType.Colon)
             {
-                throw new ParserException("Expected a colon after 'if' condition");
+                throw new ParserException("Expected a colon after 'if' condition", tokens[position]);
             }
             position++; // Move past the colon
             if (tokens[position].Type != TokenType.Newline)
-                throw new ParserException("Expected newline after ':' in if");
+                throw new ParserException("Expected newline after ':' in if", tokens[position]);
             position++;
             if (position >= tokens.Count || tokens[position].Type != TokenType.Indent)
-                throw new ParserException("Expected INDENT to begin 'if' body");
+                throw new ParserException("Expected INDENT to begin 'if' body", tokens[position]);
             position++;
 
             var body = new List<AstNode>();
@@ -509,8 +509,26 @@ namespace sharPYieLib
 
     public class ParserException : Exception
     {
-        public ParserException(string message) : base(message)
+        public int Line { get; }
+        public int Column { get; }
+
+        public ParserException(string message, int line = -1, int column = -1)
+            : base(FormatMessage(message, line, column))
         {
+            Line = line;
+            Column = column;
+        }
+
+        public ParserException(string message, Token token)
+            : this(message, token?.Line ?? -1, token?.Column ?? -1)
+        {
+        }
+
+        private static string FormatMessage(string message, int line, int column)
+        {
+            if (line >= 0 && column >= 0)
+                return $"[Line {line}, Col {column}] {message}";
+            return message;
         }
     }
 

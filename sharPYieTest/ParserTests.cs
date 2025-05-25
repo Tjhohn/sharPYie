@@ -98,6 +98,10 @@ namespace sharPYieTest
                             Assert.AreEqual("print", expectedNodes[index++]); // Check if it's a print statement
                             Assert.AreEqual(expectedNodes[index++], GetValueAsString(printStatementNode.Expression)); // Check the expression to be printed
                         }
+                        else
+                        {
+                            throw new NotSupportedException($"Unsupported node type: {node.GetType().Name}");
+                        }
                     }
                 }
                 else if (node is PrintStatementNode printStatementNode)
