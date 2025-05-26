@@ -48,6 +48,7 @@ namespace sharPYieTest
         [TestCase("testinputs/recursiveFactorial.py", 120, "120")]
         [TestCase("testinputs/sample_110.py", 120, "120")]
         [TestCase("testinputs/ifelse.py", 51, "equal 1\ngreater than 1")]
+        [TestCase("testinputs/noneandifobject.py", "None", "a is None")]
         [TestCase("testinputs/multipleCheckIf.py", 1, "-1\n0")]
         [TestCase("testinputs/listsBasics.py", new int[] { 1, 0, 1, 0 }, "[1, 0, 1, 0]")]
         public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
@@ -94,6 +95,10 @@ namespace sharPYieTest
                 // Get the value of the last assignment and verify against expected result
                 var lastAssignment = (AssignmentNode)ast.Last(node => node is AssignmentNode);
                 var result = interpreter.GetVariableValue(lastAssignment.VariableName);
+                if (result == Interpreter.NoneValue.Instance)
+                {
+                    result = "None";
+                }
                 Assert.AreEqual(expectedResult, result);
             }
         }

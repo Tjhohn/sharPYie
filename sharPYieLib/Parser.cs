@@ -333,6 +333,10 @@ namespace sharPYieLib
             {
                 baseNode = new StringLiteralNode(currentToken.Value);
             }
+            else if (currentToken.Type == TokenType.None)
+            {
+                baseNode = NoneLiteralNode.Instance;
+            }
             else if (currentToken.Type == TokenType.Identifier)
             {
                 baseNode = new VariableNode(currentToken.Value);
@@ -821,6 +825,13 @@ namespace sharPYieLib
             // Remove surrounding quotes from the string value
             Value = value.Trim('"');
         }
+    }
+
+    public class NoneLiteralNode : AstNode
+    {
+        public static readonly NoneLiteralNode Instance = new();
+
+        private NoneLiteralNode() { }
     }
 
     public class FunctionDefinitionNode : AstNode

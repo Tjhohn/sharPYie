@@ -98,6 +98,20 @@ namespace sharPYieLib
             throw new KeyNotFoundException($"Variable '{variableName}' not found in scope.");
         }
 
+        private bool IsTruthy(object? value)
+        {
+            return value switch
+            {
+                null => false,
+                NoneValue => false,
+                bool b => b,
+                int i => i != 0,
+                string s => s.Length > 0,
+                IEnumerable<object> list => list.Any(),
+                _ => true  // Default case: anything else is truthy
+            };
+        }
+
         private StepResult Walk(AstNode node)
         {
             if (node is AssignmentNode assignmentNode)
@@ -114,8 +128,8 @@ namespace sharPYieLib
             else if (node is IfStatementNode ifStatementNode)
             {
                 // Evaluate the condition
-                int conditionValue = (int)EvaluateExpression(ifStatementNode.Condition);
-                if (conditionValue == 1)
+                var conditionResult = EvaluateExpression(ifStatementNode.Condition);
+                if (IsTruthy(conditionResult))
                 {
                     // Execute the body of the if statement
                     foreach (var statement in ifStatementNode.Body)
@@ -159,6 +173,7 @@ namespace sharPYieLib
             }
             else if (node is ReturnStatementNode returnNode)
             {
+                //handle if a function returns null, may need to figure out something as pythons "None" is not "exactly" null
                 object? value = returnNode.ReturnValue != null ? EvaluateExpression(returnNode.ReturnValue) : null;
                 return StepResult.Return(value);
             }
@@ -239,6 +254,10 @@ namespace sharPYieLib
                 var result = functionInterpreter.Interpret(function.Body);
                 return result.HasReturned ? result.ReturnValue : null;
             }
+            else if (node is NoneLiteralNode)
+            {
+                return NoneValue.Instance;  // See step below
+            }
             else
             {
                 throw new ArgumentException($"Unsupported expression type: {node.GetType().Name}");
@@ -308,6 +327,14 @@ namespace sharPYieLib
 
             public static StepResult None() => new StepResult(false, null);
             public static StepResult Return(object value) => new StepResult(true, value);
+        }
+
+        public sealed class NoneValue
+        {
+            public static readonly NoneValue Instance = new NoneValue();
+            private NoneValue() { }
+
+            public override string ToString() => "None";
         }
     }
 }
