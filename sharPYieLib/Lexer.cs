@@ -209,15 +209,18 @@ namespace sharPYieLib
             _tokens.Add(new Token(TokenType.Newline, "", lineNum, line.Length));
         }
 
-        public void PrintTokensByType(List<Token> tokens)
+        public string PrintTokensByType(List<Token> tokens)
         {
-            Console.WriteLine("Token types:");
+            var sb = new StringBuilder();
+            sb.AppendLine("Token types:");
             foreach (Token token in tokens)
             {
-                Console.Write($"TokenType.{token.Type}, ");
+                sb.Append($"TokenType.{token.Type}, ");
             }
-            Console.WriteLine();
+            sb.AppendLine(); // To match the final Console.WriteLine() in original version
+            return sb.ToString();
         }
+
     }
 
     public enum TokenType

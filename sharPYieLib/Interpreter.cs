@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Xml.Linq;
 using static sharPYieLib.Interpreter;
 
 namespace sharPYieLib
@@ -126,6 +127,15 @@ namespace sharPYieLib
                         }
                     }
                 }
+                else if (ifStatementNode.ElseBody != null)
+                {
+                    foreach (var stmt in ifStatementNode.ElseBody)
+                    {
+                        var result = Walk(stmt);
+                        if (result.HasReturned)
+                            return result;
+                    }
+                }
                 return StepResult.None();
             }
             else if (node is PrintStatementNode printStatementNode)
@@ -149,7 +159,7 @@ namespace sharPYieLib
             }
             else if (node is ReturnStatementNode returnNode)
             {
-                object value = EvaluateExpression(returnNode.ReturnValue);
+                object? value = returnNode.ReturnValue != null ? EvaluateExpression(returnNode.ReturnValue) : null;
                 return StepResult.Return(value);
             }
             else if (node is FunctionCallNode callNode)

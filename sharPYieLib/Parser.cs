@@ -45,6 +45,10 @@ namespace sharPYieLib
                 {
                     return ParsePrintStatement();
                 }
+                else if (position + 1 < tokens.Count && tokens[position + 1].Type == TokenType.LeftParen)
+                {
+                    return ParseExpression(); // Handles func(args)
+                }
                 return ParseAssignment();
             }
             else if (currentToken.Type == TokenType.If)
@@ -94,6 +98,14 @@ namespace sharPYieLib
         private AstNode ParseReturnStatement()
         {
             position++; // Move past the 'return' token
+
+            // If the next token starts a new line or is a DEDENT, it's a bare return
+            if (position >= tokens.Count ||
+                tokens[position].Type == TokenType.Newline ||
+                tokens[position].Type == TokenType.Dedent)
+            {
+                return new ReturnStatementNode(null); // null = "bare" return
+            }
 
             // Parse the value expression after 'return'
             AstNode value = ParseExpression();
@@ -443,10 +455,10 @@ namespace sharPYieLib
             position++; // Move past the colon
             if (tokens[position].Type != TokenType.Newline)
                 throw new ParserException("Expected newline after ':' in if", tokens[position]);
-            position++;
+            position++; // past \n
             if (position >= tokens.Count || tokens[position].Type != TokenType.Indent)
                 throw new ParserException("Expected INDENT to begin 'if' body", tokens[position]);
-            position++;
+            position++; // pass indent
 
             var body = new List<AstNode>();
 
@@ -462,7 +474,38 @@ namespace sharPYieLib
             if (tokens[position].Type == TokenType.Dedent)
                 position++; // consume the dedent
 
-            return new IfStatementNode(condition, body);
+            ///// else
+            List<AstNode>? elseBody = null;
+
+            if (position < tokens.Count && tokens[position].Type == TokenType.Else)
+            {
+                position++; // skip 'else'
+
+                if (tokens[position].Type != TokenType.Colon)
+                    throw new ParserException("Expected ':' after 'else'", tokens[position]);
+                position++;
+
+                if (tokens[position].Type != TokenType.Newline)
+                    throw new ParserException("Expected newline after ':' in 'else'", tokens[position]);
+                position++;
+
+                if (tokens[position].Type != TokenType.Indent)
+                    throw new ParserException("Expected INDENT to begin 'else' body", tokens[position]);
+                position++;
+
+                elseBody = new List<AstNode>();
+                while (position < tokens.Count && tokens[position].Type != TokenType.Dedent)
+                {
+                    var stmt = ParseAssignmentOrStatement();
+                    if (stmt != null)
+                        elseBody.Add(stmt);
+                }
+
+                if (tokens[position].Type == TokenType.Dedent)
+                    position++; // Skip else dedent
+            }
+
+            return new IfStatementNode(condition, body, elseBody);
         }
 
         private AstNode ParsePrintStatement()
@@ -508,6 +551,11 @@ namespace sharPYieLib
                         PrintExpression(ifNode.Condition, stringBuilder, depth + 2);
                         stringBuilder.AppendLine($"{GetIndent(depth + 1)}Body:");
                         PrintASTRecursive(ifNode.Body, stringBuilder, depth + 2);
+                        if (ifNode.ElseBody is not null && ifNode.ElseBody.Count > 0)
+                        {
+                            stringBuilder.AppendLine($"{GetIndent(depth + 1)}Else:");
+                            PrintASTRecursive(ifNode.ElseBody, stringBuilder, depth + 2);
+                        }
                         break;
 
                     case ReturnStatementNode returnNode:
@@ -530,6 +578,12 @@ namespace sharPYieLib
 
         private void PrintExpression(AstNode node, StringBuilder stringBuilder, int depth)
         {
+            if (node == null)
+            {
+                stringBuilder.AppendLine($"{GetIndent(depth)}<null>");
+                return;
+            }
+
             switch (node)
             {
                 case IntLiteralNode intNode:
@@ -542,6 +596,11 @@ namespace sharPYieLib
 
                 case VariableNode varNode:
                     stringBuilder.AppendLine($"{GetIndent(depth)}Variable: {varNode.Name}");
+                    break;
+
+                case UnaryOperationNode unary:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Unary Operation: {unary.Operator}");
+                    PrintExpression(unary.Operand, stringBuilder, depth + 1);
                     break;
 
                 case BinaryOperationNode binOp:
@@ -561,11 +620,32 @@ namespace sharPYieLib
                     }
                     break;
 
+                case ListLiteralNode listNode:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}List Literal:");
+                    foreach (var element in listNode.Elements)
+                    {
+                        PrintExpression(element, stringBuilder, depth + 1);
+                    }
+                    break;
+
+                // Optional: catch block in case expression accidentally passes a full statement node
+                case ReturnStatementNode returnNode:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}Return Statement (expression context):");
+                    PrintExpression(returnNode.ReturnValue, stringBuilder, depth + 1);
+                    break;
+
+                case IfStatementNode:
+                case FunctionDefinitionNode:
+                case AssignmentNode:
+                    stringBuilder.AppendLine($"{GetIndent(depth)}<Statement node passed to expression printer: {node.GetType().Name}>");
+                    break;
+
                 default:
                     stringBuilder.AppendLine($"{GetIndent(depth)}[Unknown Expression Type: {node.GetType().Name}]");
                     break;
             }
         }
+
 
 
         private string GetValueAsString(AstNode node)
@@ -700,11 +780,13 @@ namespace sharPYieLib
     {
         public AstNode Condition { get; }
         public List<AstNode> Body { get; }
+        public List<AstNode>? ElseBody { get; }
 
-        public IfStatementNode(AstNode condition, List<AstNode> body)
+        public IfStatementNode(AstNode condition, List<AstNode> body, List<AstNode>? elseBody = null)
         {
             Condition = condition;
             Body = body;
+            ElseBody = elseBody;
         }
     }
 
