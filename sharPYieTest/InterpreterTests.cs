@@ -28,7 +28,8 @@ namespace sharPYieTest
             // Now, we need to retrieve the value of the last assignment node (if any) and assert it
             if (ast.Count > 0 && ast[ast.Count - 1] is AssignmentNode lastAssignment)
             {
-                Assert.AreEqual(expectedResult, interpreter.GetVariableValue(lastAssignment.VariableName));
+                var actual = interpreter.GetVariableValue(lastAssignment.VariableName);
+                Assert.AreEqual(expectedResult, PyConverter.Unwrap((PyBaseObject)actual));
             }
             else
             {
@@ -44,7 +45,7 @@ namespace sharPYieTest
         [TestCase("testinputs/multipleParams.py", 470, "470")]
         [TestCase("testinputs/concatStrings.py", "weird", "qwertyweird")]
         [TestCase("testinputs/basicScope.py", 8, "10\n8")]
-        [TestCase("testinputs/builtins.py", 8, "5\n42\n99\nint32\n[0, 1, 2]")] //technically should return int not "int32" but I dont super care rn
+        [TestCase("testinputs/builtins.py", 8, "5\n42\n99\nint\n[0, 1, 2]")] 
         [TestCase("testinputs/recursiveFactorial.py", 120, "120")]
         [TestCase("testinputs/sample_110.py", 120, "120")]
         [TestCase("testinputs/basic_array_access_test.py", 2, "2")]
@@ -93,14 +94,10 @@ namespace sharPYieTest
 
             if (assignmentNodeExists)
             {
-                // Get the value of the last assignment and verify against expected result
                 var lastAssignment = (AssignmentNode)ast.Last(node => node is AssignmentNode);
                 var result = interpreter.GetVariableValue(lastAssignment.VariableName);
-                if (result == Interpreter.NoneValue.Instance)
-                {
-                    result = "None";
-                }
-                Assert.AreEqual(expectedResult, result);
+                var unwrapped = PyConverter.Unwrap((PyBaseObject)result);
+                Assert.AreEqual(expectedResult, unwrapped ?? "None");
             }
         }
     }
