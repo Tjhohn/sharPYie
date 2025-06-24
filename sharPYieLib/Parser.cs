@@ -29,7 +29,7 @@ namespace sharPYieLib
                 {
                     ast.Add(ast_node);
                 }
-                
+
             }
 
             return ast;
@@ -200,7 +200,7 @@ namespace sharPYieLib
             {
                 position++;
             }
-                
+
 
             return new FunctionDefinitionNode(functionName, parameters, body);
         }
@@ -396,33 +396,53 @@ namespace sharPYieLib
             }
 
             // Handle chained function calls like list.append(...)
-            while (position < tokens.Count && tokens[position].Type == TokenType.Dot)
+            while (position < tokens.Count)
             {
-                position++; // skip dot
-                if (tokens[position].Type != TokenType.Identifier)
-                    throw new ParserException("Expected method name after '.'", tokens[position]);
-                string methodName = tokens[position++].Value;
 
-                if (tokens[position].Type != TokenType.LeftParen)
-                    throw new ParserException("Expected '(' after method name", tokens[position]);
-                position++;
-
-                var args = new List<AstNode> { baseNode }; // Pass the baseNode as the first arg
-                if (tokens[position].Type != TokenType.RightParen)
+                if (tokens[position].Type == TokenType.Dot)
                 {
-                    while (true)
+                    position++; // skip dot
+                    if (tokens[position].Type != TokenType.Identifier)
+                        throw new ParserException("Expected method name after '.'", tokens[position]);
+                    string methodName = tokens[position++].Value;
+
+                    if (tokens[position].Type != TokenType.LeftParen)
+                        throw new ParserException("Expected '(' after method name", tokens[position]);
+                    position++;
+
+                    var args = new List<AstNode> { baseNode }; // Pass the baseNode as the first arg
+                    if (tokens[position].Type != TokenType.RightParen)
                     {
-                        args.Add(ParseExpression());
-                        if (tokens[position].Type == TokenType.Comma) position++;
-                        else break;
+                        while (true)
+                        {
+                            args.Add(ParseExpression());
+                            if (tokens[position].Type == TokenType.Comma) position++;
+                            else break;
+                        }
                     }
+
+                    if (tokens[position].Type != TokenType.RightParen)
+                        throw new ParserException("Expected ')' after method arguments", tokens[position]);
+                    position++;
+
+                    baseNode = new FunctionCallNode(methodName, args);
+                }
+                else if (tokens[position].Type == TokenType.LeftBracket) //array access
+                {
+                    position++; // skip '['
+                    var indexExpr = ParseExpression();
+
+                    if (tokens[position].Type != TokenType.RightBracket)
+                        throw new ParserException("Expected ']' after list index", tokens[position]);
+                    position++; // skip ']'
+
+                    baseNode = new IndexAccessNode(baseNode, indexExpr);
+                }
+                else
+                {
+                    break; // tokens left but not for function access or array/dict access
                 }
 
-                if (tokens[position].Type != TokenType.RightParen)
-                    throw new ParserException("Expected ')' after method arguments", tokens[position]);
-                position++;
-
-                baseNode = new FunctionCallNode(methodName, args);
             }
 
             return baseNode;
@@ -472,7 +492,7 @@ namespace sharPYieLib
                 if (node != null)
                 {
                     body.Add(node);
-                } 
+                }
             }
 
             if (tokens[position].Type == TokenType.Dedent)
@@ -719,30 +739,30 @@ namespace sharPYieLib
 
 
     public abstract class AstNode
-        {
-        }
+    {
+    }
 
     public class AssignmentNode : AstNode
-        {
-            public string VariableName { get; }
-            public AstNode Value { get; }
+    {
+        public string VariableName { get; }
+        public AstNode Value { get; }
 
-            public AssignmentNode(string variableName, AstNode value)
-            {
-                VariableName = variableName;
-                Value = value;
-            }
+        public AssignmentNode(string variableName, AstNode value)
+        {
+            VariableName = variableName;
+            Value = value;
         }
+    }
 
     public class IntLiteralNode : AstNode
-        {
-            public int Value { get; }
+    {
+        public int Value { get; }
 
-            public IntLiteralNode(int value)
-            {
-                Value = value;
-            }
+        public IntLiteralNode(int value)
+        {
+            Value = value;
         }
+    }
 
     public class VariableNode : AstNode
     {
@@ -865,6 +885,18 @@ namespace sharPYieLib
         public ListLiteralNode(List<AstNode> elements)
         {
             Elements = elements;
+        }
+    }
+
+    public class IndexAccessNode : AstNode
+    {
+        public AstNode Target { get; }
+        public AstNode Index { get; }
+
+        public IndexAccessNode(AstNode target, AstNode index)
+        {
+            Target = target;
+            Index = index;
         }
     }
 }

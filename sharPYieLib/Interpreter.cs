@@ -258,6 +258,23 @@ namespace sharPYieLib
             {
                 return NoneValue.Instance;  // See step below
             }
+            else if (node is IndexAccessNode indexNode)
+            {
+                var target = EvaluateExpression(indexNode.Target);
+                var index = EvaluateExpression(indexNode.Index);
+
+                if (target is List<object> list)
+                {
+                    int i = Convert.ToInt32(index);
+                    if (i < 0 || i >= list.Count)
+                        throw new IndexOutOfRangeException($"Index {i} out of bounds for list of size {list.Count}");
+                    return list[i];
+                }
+                else
+                {
+                    throw new ArgumentException("Attempted index access on non-list object");
+                }
+            }
             else
             {
                 throw new ArgumentException($"Unsupported expression type: {node.GetType().Name}");

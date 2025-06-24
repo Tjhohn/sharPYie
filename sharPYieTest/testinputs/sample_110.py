@@ -38,7 +38,7 @@ def run(cells, gen):
 
 def print_line(cells, i, n):
     if i >= n:
-        print()
+        print(n)
         return
     if cells[i] == 1:
         print('█', end='')

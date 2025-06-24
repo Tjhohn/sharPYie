@@ -3,4 +3,4 @@
 if a:
     print("a isnt None")
 else:
-    print("a is None")
+    print(a)

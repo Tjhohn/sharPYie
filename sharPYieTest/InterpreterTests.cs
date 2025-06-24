@@ -47,8 +47,9 @@ namespace sharPYieTest
         [TestCase("testinputs/builtins.py", 8, "5\n42\n99\nint32\n[0, 1, 2]")] //technically should return int not "int32" but I dont super care rn
         [TestCase("testinputs/recursiveFactorial.py", 120, "120")]
         [TestCase("testinputs/sample_110.py", 120, "120")]
+        [TestCase("testinputs/basic_array_access_test.py", 2, "2")]
         [TestCase("testinputs/ifelse.py", 51, "equal 1\ngreater than 1")]
-        [TestCase("testinputs/noneandifobject.py", "None", "a is None")]
+        [TestCase("testinputs/noneandifobject.py", "None", "None")]
         [TestCase("testinputs/multipleCheckIf.py", 1, "-1\n0")]
         [TestCase("testinputs/listsBasics.py", new int[] { 1, 0, 1, 0 }, "[1, 0, 1, 0]")]
         public void InterpretAST_ValidInputFromFile_ReturnsCorrectResult(string relativePath, object expectedResult, string expectedString)
